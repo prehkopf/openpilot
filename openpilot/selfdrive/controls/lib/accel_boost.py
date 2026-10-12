@@ -14,13 +14,16 @@ class AccelBoost:
     self.boost_this_override = 0.0
     self.boost_eligible = False
 
-  def update(self, sm, output_a_target_e2e, output_a_target_mpc, a_cruise):
+  def update(self, sm, output_a_target_e2e, output_a_target_mpc, a_cruise, e2e_active=None):
+    # e2e_active: whether the e2e plan is a candidate this cycle (DEC-aware); defaults to Experimental Mode as upstream
+    if e2e_active is None:
+      e2e_active = sm['selfdriveState'].experimentalMode
     enabled = sm['selfdriveState'].enabled
     gas_pressed = sm['carState'].gasPressed
     v_ego = sm['carState'].vEgo
     speed_scale = np.interp(v_ego, [ACCEL_BOOST_MIN_SPEED, 2 * ACCEL_BOOST_MIN_SPEED], [0.0, 1.0])
     boost_scale = speed_scale * np.interp(output_a_target_e2e, [-1.0, -0.5, 5.0], [0.0, 1.0, 1.0], right=0.0)
-    model_limited = (sm['selfdriveState'].experimentalMode and
+    model_limited = (e2e_active and
                      output_a_target_e2e + self.total_boost * boost_scale < min(output_a_target_mpc, a_cruise) - 0.1)
 
     if not enabled or not gas_pressed:

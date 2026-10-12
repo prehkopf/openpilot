@@ -13,6 +13,7 @@ from openpilot.selfdrive.ui.mici.widgets.button import BigButton, BigCircleButto
 from openpilot.selfdrive.ui.mici.widgets.dialog import BigDialog, BigConfirmationDialog
 from openpilot.selfdrive.ui.mici.onroad.cabin_camera_dialog import CabinCameraDialog
 from openpilot.selfdrive.ui.mici.layouts.onboarding import TrainingGuide, TermsPage
+from openpilot.selfdrive.ui.sunnypilot.mici.widgets.onroad_screen import OnroadScreenToggle
 from openpilot.system.ui.lib.application import gui_app, MousePos
 from openpilot.system.ui.lib.multilang import tr
 from openpilot.selfdrive.ui.ui_state import device, ui_state
@@ -195,6 +196,7 @@ class DeviceLayoutMici(NavScroller):
     self._scroller.add_widgets([
       DeviceInfoLayoutMici(),
       self._pairing_button,
+      OnroadScreenToggle(),
       review_training_guide_btn,
       cabin_cam_btn,
       terms_btn,
