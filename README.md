@@ -1,74 +1,91 @@
-![](https://user-images.githubusercontent.com/47793918/233812617-beab2e71-57b9-479e-8bff-c3931347ca40.png)
+# sunnypilot for the Honda Odyssey (prehkopf)
 
-## 🌞 What is sunnypilot?
-[sunnypilot](https://github.com/sunnyhaibin/sunnypilot) is a fork of comma.ai's openpilot, an open source driver assistance system. sunnypilot offers the user a unique driving experience for over 300+ supported car makes and models with modified behaviors of driving assist engagements. sunnypilot complies with comma.ai's safety rules as accurately as possible.
+This is my personal build for a **2022 Honda Odyssey** (`HONDA_ODYSSEY_5G_MMR`, Bosch) on a **comma four**, with openpilot longitudinal control. It combines three people's work:
 
-## 💭 Join our Community Forum
-Join the official sunnypilot community forum to stay up to date with all the latest features and be a part of shaping the future of sunnypilot!
-* https://community.sunnypilot.ai/
+- [**sunnypilot**](https://github.com/sunnypilot/sunnypilot): the feature set (MADS, Dynamic Experimental Control and the rest).
+- [**MVL (mvl-boston)**](https://github.com/mvl-boston/openpilot): his Honda dev branch.
+- [**brikowski**](https://github.com/brikowski/openpilot): the `ody-op` Odyssey longitudinal and steering tuning.
 
-## Documentation
-https://docs.sunnypilot.ai/ is your one stop shop for everything from features to installation to FAQ about the sunnypilot
+All three sit on top of [comma.ai's openpilot](https://github.com/commaai/openpilot).
 
-## 🚘 Running on a dedicated device in a car
-First, check out this list of items you'll need to [get started](https://community.sunnypilot.ai/t/getting-started-using-sunnypilot-in-your-supported-car/251).
+Almost nothing here is mine. My part is merging the three, the Odyssey-specific fixes needed to make them agree, and the testing. Credit for anything that drives well belongs to the people below.
 
-## Installation
-Next, refer to the sunnypilot community forum for [installation instructions](https://community.sunnypilot.ai/t/read-before-installing-sunnypilot/254), as well as a complete list of [Recommended Branch Installations](https://community.sunnypilot.ai/t/recommended-branch-installations/235).
+## Credits
 
-## 🎆 Pull Requests
-We welcome both pull requests and issues on GitHub. Bug fixes are encouraged.
+| Who | What this build uses |
+|---|---|
+| [**brikowski**](https://github.com/brikowski) ([openpilot `ody-op`](https://github.com/brikowski/openpilot/tree/ody-op), [opendbc `ody-op`](https://github.com/brikowski/opendbc/tree/ody-op)) | The Odyssey longitudinal controller: gas, brake and coast handling with grade compensation and gas-response feedback. Also the Odyssey steering authority (`STEER_MAX` 3840) with its torque tune, the panda safety limits for Odyssey longitudinal, the fix that stops the set speed jumping to 65 mph on engage, the `longControlState` ordering fix in controlsd, the low-memory branch switch in `op.sh`, and the Odyssey test suite this build's tests are based on. |
+| [**MVL (mvl-boston)**](https://github.com/mvl-boston) ([openpilot](https://github.com/mvl-boston/openpilot), [opendbc](https://github.com/mvl-boston/opendbc)) | The Honda dev branch (`sp-honda-dev-202608`) underneath: Honda tuning across the lineup, Honda button handling with all-speed MADS, the torque-map steering, and the branch switcher. This fork mirrors all MVL branches so the switcher can still reach them. |
+| [**sunnypilot**](https://github.com/sunnypilot/sunnypilot) | The base: MADS, Dynamic Experimental Control, the settings UI, the model store, and the October 2026 comma sync. |
+| [**comma.ai**](https://github.com/commaai/openpilot) | openpilot itself, opendbc and panda. |
 
-Pull requests should be against the most current `master` branch.
+If this build is useful to you, the thanks go to them. If you have an Odyssey and want the pure version, run brikowski's `ody-op` directly.
+
+## Branches
+
+| Branch | Status | Install URL |
+|---|---|---|
+| `ody-next` | My daily driver | `installer.comma.ai/prehkopf/ody-next` |
+| `ody-test` | Experimental. `ody-next` plus a **van load** setting (Empty / Family / Family + luggage) that adds gas for a heavier van. Still being calibrated on loaded drives. | `installer.comma.ai/prehkopf/ody-test` |
+| MVL's branches (`sp-honda-*`, …) | Unchanged mirrors of [mvl-boston/openpilot](https://github.com/mvl-boston/openpilot) | through the branch switcher |
+
+The matching car code lives in [prehkopf/opendbc](https://github.com/prehkopf/opendbc) on branches of the same names.
+
+## What's in `ody-next`
+
+The branch is built in this order:
+
+1. sunnypilot's October 2026 comma sync (comma openpilot 2026-10-07).
+2. MVL `sp-honda-dev-202608`.
+3. comma master 2026-10-11.
+4. brikowski's Odyssey controller and fixes, through his 2026-10-12 commits.
+
+Odyssey-specific details:
+
+- **Longitudinal.** brikowski's controller replaces the generic Honda Bosch gas and wind learner for the Odyssey only. Every other Honda keeps MVL's behavior.
+- **Actuator delay is 0.5 s** on the Odyssey. brikowski's controller is tuned at 0.5 s. MVL uses 0.25 s for Bosch, but a fit of my own drives also puts the van at 0.5 s.
+- **Steering.** STEER_MAX is 3840 with delta 2. Platform flags are `BOSCH_ALT_BRAKE | BOSCH_ALT_RADAR` (safetyParam 259).
+- **Experimental mode.** Gas taps add a small, temporary acceleration boost (comma's AccelBoost). This works with Dynamic Experimental Control.
+- **comma four screen.** An "onroad screen" picker on the Device page: always on, 15 s or 3 min.
+- **Kept from comma:** the block on openpilot sending AEB. Stock emergency braking is not available with openpilot longitudinal on Bosch Hondas. openpilot's forward collision warning and hard braking still work.
+
+## Testing
+
+Every change passes opendbc's full suite (panda safety, MISRA, about 10,300 car tests) and a full PC build. It also gets process replay against a sunnypilot base and replay on my own Odyssey drives, before it goes in the van. The methods and scripts are in [`tools/ody/`](tools/ody/README.md).
+
+## ⚠️ Read this first
+
+- This is a personal build, tested on one 2022 Odyssey with a comma four. brikowski develops on a 2023, but I haven't driven any other year on this build.
+- openpilot longitudinal on Bosch Hondas is **alpha**. It disables the stock radar, and with it stock ACC and collision mitigation braking.
+- You are the driver. Keep your hands ready and your eyes on the road.
 
 ## 📊 User Data
 
-By default, sunnypilot uploads the driving data to comma servers. You can also access your data through [comma connect](https://connect.comma.ai/).
+By default, sunnypilot uploads driving data to comma servers. You can also see your data through [comma connect](https://connect.comma.ai/).
 
-sunnypilot is open source software. The user is free to disable data collection if they wish to do so.
+sunnypilot is open source software, and you're free to turn off data collection.
 
-sunnypilot logs the road-facing camera, CAN, GPS, IMU, magnetometer, thermal sensors, crashes, and operating system logs.
-The driver-facing camera and microphone are only logged if you explicitly opt-in in settings.
+sunnypilot logs the road-facing camera, CAN, GPS, IMU, magnetometer, thermal sensors, crashes, and operating system logs. The driver-facing camera and microphone are only logged if you explicitly opt in under settings.
 
 By using this software, you understand that use of this software or its related services will generate certain types of user data, which may be logged and stored at the sole discretion of comma. By accepting this agreement, you grant an irrevocable, perpetual, worldwide right to comma for the use of this data.
 
 ## Licensing
 
-sunnypilot is released under the [MIT License](LICENSE). This repository includes original work as well as significant portions of code derived from [openpilot by comma.ai](https://github.com/commaai/openpilot), which is also released under the MIT license with additional disclaimers.
+This fork, like sunnypilot, is released under the [MIT License](LICENSE). It includes original work by sunnypilot, MVL and brikowski, as well as significant portions of code derived from [openpilot by comma.ai](https://github.com/commaai/openpilot), which is also released under the MIT license with additional disclaimers.
 
-The original openpilot license notice, including comma.ai’s indemnification and alpha software disclaimer, is reproduced below as required:
+The original openpilot license notice, including comma.ai's indemnification and alpha software disclaimer, is reproduced below as required:
 
 > openpilot is released under the MIT license. Some parts of the software are released under other licenses as specified.
 >
-> Any user of this software shall indemnify and hold harmless Comma.ai, Inc. and its directors, officers, employees, agents, stockholders, affiliates, subcontractors and customers from and against all allegations, claims, actions, suits, demands, damages, liabilities, obligations, losses, settlements, judgments, costs and expenses (including without limitation attorneys’ fees and costs) which arise out of, relate to or result from any use of this software by user.
+> Any user of this software shall indemnify and hold harmless Comma.ai, Inc. and its directors, officers, employees, agents, stockholders, affiliates, subcontractors and customers from and against all allegations, claims, actions, suits, demands, damages, liabilities, obligations, losses, settlements, judgments, costs and expenses (including without limitation attorneys' fees and costs) which arise out of, relate to or result from any use of this software by user.
 >
 > **THIS IS ALPHA QUALITY SOFTWARE FOR RESEARCH PURPOSES ONLY. THIS IS NOT A PRODUCT.
 > YOU ARE RESPONSIBLE FOR COMPLYING WITH LOCAL LAWS AND REGULATIONS.
 > NO WARRANTY EXPRESSED OR IMPLIED.**
 
-For full license terms, please see the [`LICENSE`](LICENSE) file.
+For full license terms, see the [`LICENSE`](LICENSE) file.
 
-## 💰 Support sunnypilot
-If you find any of the features useful, consider becoming a [sponsor on GitHub](https://github.com/sponsors/sunnyhaibin) to support future feature development and improvements.
+## Supporting the people who made this
 
-
-By becoming a sponsor, you will gain access to exclusive content, early access to new features, and the opportunity to directly influence the project's development.
-
-
-<h3>GitHub Sponsor</h3>
-
-<a href="https://github.com/sponsors/sunnyhaibin">
-  <img src="https://user-images.githubusercontent.com/47793918/244135584-9800acbd-69fd-4b2b-bec9-e5fa2d85c817.png" alt="Become a Sponsor" width="300" style="max-width: 100%; height: auto;">
-</a>
-<br>
-
-<h3>PayPal</h3>
-
-<a href="https://paypal.me/sunnyhaibin0850" target="_blank">
-<img src="https://www.paypalobjects.com/en_US/i/btn/btn_donateCC_LG.gif" alt="PayPal this" title="PayPal - The safer, easier way to pay online!" border="0" />
-</a>
-<br></br>
-
-Your continuous love and support are greatly appreciated! Enjoy 🥰
-
-<span>-</span> Jason, Founder of sunnypilot
+- sunnypilot: [GitHub Sponsors](https://github.com/sponsors/sunnyhaibin) and the [community forum](https://community.sunnypilot.ai/)
+- comma.ai: [comma.ai/shop](https://comma.ai/shop)
