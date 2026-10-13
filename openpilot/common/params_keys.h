@@ -304,6 +304,7 @@ inline static std::unordered_map<std::string, ParamKeyAttributes> keys = {
     {"ModelRunnerTypeCache", {CLEAR_ON_ONROAD_TRANSITION, INT}},
     {"OffroadMode", {CLEAR_ON_MANAGER_START, BOOL}},
     {"Offroad_TiciSupport", {CLEAR_ON_MANAGER_START, JSON}},
+    {"OdysseyLoadPreset", {PERSISTENT, INT, "0"}},  // 0 empty, 1 family, 2 family + luggage; read by the Honda car controller
     {"OnroadScreenOffBrightness", {PERSISTENT | BACKUP, INT, "0"}},
     {"OnroadScreenOffBrightnessMigrated", {PERSISTENT | BACKUP, STRING, "0.0"}},
     {"OnroadScreenOffTimer", {PERSISTENT | BACKUP, INT, "15"}},
