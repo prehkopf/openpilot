@@ -202,12 +202,12 @@ class MiciHomeLayout(Widget):
     version = ui_state.params.get("Version")
     git_branch = ui_state.params.get("GitBranch")
     git_commit = ui_state.params.get("GitCommit")
-    commit = "https://buymeacoffee.com/mvlboston"
 
-    if not all((version, git_branch, git_commit, commit)):
+    if not all((version, git_branch, git_commit)):
       return None
 
-    branch = git_branch + " " + git_commit[:7]
+    branch = git_branch
+    commit = "build " + git_commit[:7]
 
     commit_date_raw = ui_state.params.get("GitCommitDate")
     try:
