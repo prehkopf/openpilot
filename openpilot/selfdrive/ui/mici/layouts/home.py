@@ -14,6 +14,7 @@ from openpilot.system.ui.widgets.label import UnifiedLabel, gui_label
 from openpilot.system.ui.lib.application import gui_app, FontWeight, MousePos, TextAlignment, TextAlignmentVertical
 from openpilot.selfdrive.ui.ui_state import ui_state, ChestnutState
 from openpilot.common.version import RELEASE_BRANCHES
+from openpilot.common.build_name import build_label
 
 HEAD_BUTTON_FONT_SIZE = 40
 HOME_PADDING = 8
@@ -207,7 +208,7 @@ class MiciHomeLayout(Widget):
       return None
 
     branch = git_branch
-    commit = "build " + git_commit[:7]
+    commit = build_label(git_commit)
 
     commit_date_raw = ui_state.params.get("GitCommitDate")
     try:

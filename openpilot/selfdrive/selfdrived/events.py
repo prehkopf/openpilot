@@ -6,6 +6,7 @@ from openpilot.cereal import log
 from opendbc.car.structs import car
 import openpilot.cereal.messaging as messaging
 from openpilot.common.constants import CV
+from openpilot.common.build_name import build_label
 from openpilot.common.git import get_commit, get_short_branch
 from openpilot.common.realtime import DT_CTRL
 from openpilot.selfdrive.locationd.calibrationd import MIN_SPEED_FILTER
@@ -71,7 +72,7 @@ def startup_master_alert(CP: car.CarParams, CS: car.CarState, sm: messaging.SubM
   branch = get_short_branch()  # Ensure get_short_branch is cached to avoid lags on startup
   if "REPLAY" in os.environ:
     branch = "replay"
-  build = f"{branch} build {get_commit()[:7]}" if get_commit() else branch
+  build = f"{branch} • {build_label(get_commit())}" if get_commit() else branch
 
   return StartupAlert("RehkopfPilot", build, alert_status=AlertStatus.userPrompt)
 
