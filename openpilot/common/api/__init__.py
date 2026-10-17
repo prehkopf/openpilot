@@ -1,4 +1,4 @@
-from openpilot.common.api.comma_connect import CommaConnectApi
+from openpilot.common.api.comma_connect import API_HOST, CommaConnectApi  # noqa: F401  (API_HOST used by navd)
 
 
 class Api:
