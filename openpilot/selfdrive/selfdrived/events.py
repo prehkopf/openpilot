@@ -6,7 +6,7 @@ from openpilot.cereal import log
 from opendbc.car.structs import car
 import openpilot.cereal.messaging as messaging
 from openpilot.common.constants import CV
-from openpilot.common.git import get_short_branch
+from openpilot.common.git import get_commit, get_short_branch
 from openpilot.common.realtime import DT_CTRL
 from openpilot.selfdrive.locationd.calibrationd import MIN_SPEED_FILTER
 from openpilot.common.hardware import HARDWARE
@@ -71,8 +71,9 @@ def startup_master_alert(CP: car.CarParams, CS: car.CarState, sm: messaging.SubM
   branch = get_short_branch()  # Ensure get_short_branch is cached to avoid lags on startup
   if "REPLAY" in os.environ:
     branch = "replay"
+  build = f"{branch} build {get_commit()[:7]}" if get_commit() else branch
 
-  return StartupAlert("buymeacoffee.com/mvlboston", branch, alert_status=AlertStatus.userPrompt)
+  return StartupAlert("RehkopfPilot", build, alert_status=AlertStatus.userPrompt)
 
 def below_engage_speed_alert(CP: car.CarParams, CS: car.CarState, sm: messaging.SubMaster, metric: bool, soft_disable_time: int, personality) -> Alert:
   return NoEntryAlert(f"Drive above {get_display_speed(CP.minEnableSpeed, metric)} to engage")
