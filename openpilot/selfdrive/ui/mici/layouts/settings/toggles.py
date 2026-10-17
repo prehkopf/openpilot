@@ -25,6 +25,11 @@ class TogglesLayoutMici(NavScroller):
                                                    "Set speed is a maximum, not a target.\n" +
                                                    "These are alpha features. Expect mistakes.\n" +
                                                    "The path colors show acceleration and braking.")
+    self._dec_btn = BigParamControl("dynamic experimental", "DynamicExperimentalControl",
+                                    description="Only with experimental mode on.\n" +
+                                                "Lets the model switch between normal ACC following and\n" +
+                                                "full experimental (stops, lights, curves) as conditions change.\n" +
+                                                "Off: experimental mode stays fully on the whole drive.")
     is_metric_toggle = BigParamControl("use metric units", "IsMetric")
     ldw_toggle = BigParamControl("lane departure warnings", "IsLdwEnabled",
                                  description="Warn when you drift across a detected lane line.\n" +
@@ -45,6 +50,7 @@ class TogglesLayoutMici(NavScroller):
     self._scroller.add_widgets([
       self._personality_toggle,
       self._experimental_btn,
+      self._dec_btn,
       is_metric_toggle,
       ldw_toggle,
       always_on_dm_toggle,
@@ -56,6 +62,7 @@ class TogglesLayoutMici(NavScroller):
     # Toggle lists
     self._refresh_toggles = (
       ("ExperimentalMode", self._experimental_btn),
+      ("DynamicExperimentalControl", self._dec_btn),
       ("IsMetric", is_metric_toggle),
       ("IsLdwEnabled", ldw_toggle),
       ("AlwaysOnDM", always_on_dm_toggle),
@@ -94,6 +101,7 @@ class TogglesLayoutMici(NavScroller):
     if ui_state.CP is not None:
       if ui_state.has_longitudinal_control:
         self._experimental_btn.set_visible(True)
+        self._dec_btn.set_visible(True)
         self._personality_toggle.set_visible(True)
       else:
         # no long for now
@@ -101,6 +109,9 @@ class TogglesLayoutMici(NavScroller):
         self._experimental_btn.set_checked(False)
         self._personality_toggle.set_visible(False)
         ui_state.params.remove("ExperimentalMode")
+        self._dec_btn.set_visible(False)
+        self._dec_btn.set_checked(False)
+        ui_state.params.remove("DynamicExperimentalControl")
 
     # Refresh toggles from params to mirror external changes
     for key, item in self._refresh_toggles:
