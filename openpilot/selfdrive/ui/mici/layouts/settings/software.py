@@ -191,6 +191,11 @@ class InstallUpdateButton(BigButton):
     threading.Thread(target=run, daemon=True).start()
 
 
+# The fork mirrors every MVL branch; only offer the builds that make sense for this van.
+# The installed branch is always listed, and "switch branch" still accepts any name.
+PICKER_BRANCHES = ("ody-next", "ody-test", "sp-honda-202607")
+
+
 class BranchSelectPage(NavScroller):
   def __init__(self, on_select: Callable[[str], None]):
     super().__init__()
@@ -198,12 +203,9 @@ class BranchSelectPage(NavScroller):
     params = ui_state.params
     current_git_branch = params.get("GitBranch") or ""
     branches_str = params.get("UpdaterAvailableBranches") or ""
-    branches = [b for b in branches_str.split(",") if b]
-
-    for b in [current_git_branch, "devel-staging", "devel", "nightly", "nightly-dev", "master"]:
-      if b in branches:
-        branches.remove(b)
-        branches.insert(0, b)
+    available = {b for b in branches_str.split(",") if b}
+    branches = [b for b in (current_git_branch, *PICKER_BRANCHES) if b in available]
+    branches = list(dict.fromkeys(branches))  # current branch first, no duplicates
 
     current_target = params.get("UpdaterTargetBranch") or ""
     check_icon = gui_app.texture("icons_mici/settings/device/up_to_date.png", 64, 64)
@@ -258,7 +260,7 @@ class SoftwareLayoutMici(NavScroller):
 
     def switch_branch_clicked():
       current_branch = ui_state.params.get("GitBranch") or ""
-      dlg = BigInputDialog("enter mvl_boston/", current_branch, minimum_length=1,
+      dlg = BigInputDialog("enter branch", current_branch, minimum_length=1,
                            confirm_callback=switch_branch_handle_selection)
       gui_app.push_widget(dlg)
       return
