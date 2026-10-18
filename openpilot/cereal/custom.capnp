@@ -209,10 +209,20 @@ struct LongitudinalPlanSP @0xf35cc4560bbf6ec2 {
     state @0 :DynamicExperimentalControlState;
     enabled @1 :Bool;
     active @2 :Bool;
+    reason @3 :DecReason;  # RehkopfPilot: why DEC chose blended; none while in acc
 
     enum DynamicExperimentalControlState {
       acc @0;
       blended @1;
+    }
+
+    enum DecReason {
+      none @0;
+      stopAhead @1;   # model trajectory ends well short of where it should at this speed (stop, light)
+      slowing @2;     # milder trajectory shortage
+      curve @3;       # shortage while the model path turns sharply
+      stopped @4;     # standstill
+      collision @5;   # MPC forward-collision warning
     }
   }
 

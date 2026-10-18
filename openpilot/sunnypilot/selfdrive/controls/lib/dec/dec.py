@@ -17,6 +17,7 @@ from typing import Literal
 # d-e2e, from modeldata.h
 TRAJECTORY_SIZE = 33
 SET_MODE_TIMEOUT = 15
+CURVE_YAW = 0.35  # rad (~20 deg) of model path heading change at the trajectory end counts as a curve
 
 # Define the valid mode types
 ModeType = Literal['acc', 'blended']
@@ -183,6 +184,8 @@ class DynamicExperimentalController:
     self._endpoint_x = float('inf')
     self._expected_distance = 0.0
     self._trajectory_valid = False
+    self._path_yaw = 0.0
+    self._reason = 'none'
 
   def _read_params(self) -> None:
     if self._frame % int(1. / DT_MDL) == 0:
@@ -190,6 +193,19 @@ class DynamicExperimentalController:
 
   def mode(self) -> str:
     return self._mode_manager.get_mode()
+
+  def reason(self) -> str:
+    """Why DEC is in blended mode ('stopAhead', 'slowing', 'curve', 'stopped', 'collision'), or 'none' in acc."""
+    return self._reason if self.mode() == 'blended' else 'none'
+
+  def _request_blended(self, reason: str, confidence: float, emergency: bool = False) -> None:
+    self._reason = reason
+    self._mode_manager.request_mode('blended', confidence=confidence, emergency=emergency)
+
+  def _slow_down_reason(self) -> str:
+    if abs(self._path_yaw) > CURVE_YAW:
+      return 'curve'
+    return 'stopAhead' if self._urgency > 0.7 else 'slowing'
 
   def enabled(self) -> bool:
     return self._enabled
@@ -268,6 +284,8 @@ class DynamicExperimentalController:
 
     # Use the exact endpoint (33rd point, index 32)
     endpoint_x = md.position.x[TRAJECTORY_SIZE - 1]
+    yaw = getattr(md.orientation, 'z', None)  # heading of the model path at its end (rad)
+    self._path_yaw = yaw[TRAJECTORY_SIZE - 1] if yaw is not None and len(yaw) == TRAJECTORY_SIZE else 0.0
     self._endpoint_x = endpoint_x
 
     # Get expected distance based on current speed using tuned constants
@@ -307,23 +325,23 @@ class DynamicExperimentalController:
 
     # EMERGENCY: MPC FCW - immediate blended mode
     if self._has_mpc_fcw:
-      self._mode_manager.request_mode('blended', confidence=1.0, emergency=True)
+      self._request_blended('collision', confidence=1.0, emergency=True)
       return
 
     # Standstill: use blended
     if self._standstill_count > 3:
-      self._mode_manager.request_mode('blended', confidence=0.9)
+      self._request_blended('stopped', confidence=0.9)
       return
 
     # Slow down scenarios: emergency for high urgency, normal for lower urgency
     if self._has_slow_down:
       if self._urgency > 0.7:
         # Emergency: immediate blended mode for high urgency stops
-        self._mode_manager.request_mode('blended', confidence=1.0, emergency=True)
+        self._request_blended(self._slow_down_reason(), confidence=1.0, emergency=True)
       else:
         # Normal: blended with urgency-based confidence
         confidence = min(1.0, self._urgency * 1.5)
-        self._mode_manager.request_mode('blended', confidence=confidence)
+        self._request_blended(self._slow_down_reason(), confidence=confidence)
       return
 
     # Driving slow: use ACC (but not if actively slowing down)
@@ -339,7 +357,7 @@ class DynamicExperimentalController:
 
     # EMERGENCY: MPC FCW - immediate blended mode
     if self._has_mpc_fcw:
-      self._mode_manager.request_mode('blended', confidence=1.0, emergency=True)
+      self._request_blended('collision', confidence=1.0, emergency=True)
       return
 
     # If lead detected and not in standstill: always use ACC
@@ -351,16 +369,16 @@ class DynamicExperimentalController:
     if self._has_slow_down:
       if self._urgency > 0.7:
         # Emergency: immediate blended mode for high urgency stops
-        self._mode_manager.request_mode('blended', confidence=1.0, emergency=True)
+        self._request_blended(self._slow_down_reason(), confidence=1.0, emergency=True)
       else:
         # Normal: blended with urgency-based confidence
         confidence = min(1.0, self._urgency * 1.3)
-        self._mode_manager.request_mode('blended', confidence=confidence)
+        self._request_blended(self._slow_down_reason(), confidence=confidence)
       return
 
     # Standstill: use blended
     if self._standstill_count > 3:
-      self._mode_manager.request_mode('blended', confidence=0.9)
+      self._request_blended('stopped', confidence=0.9)
       return
 
     # Driving slow: use ACC (but not if actively slowing down)
