@@ -52,7 +52,7 @@ def test_each_stock_page_built_once(page):
 
 
 def test_home_has_five_groups():
-  for label in ("driving", "screen &\\nalerts", "privacy &\\nrecording", "software", "device &\\ndeveloper"):
+  for label in ("driving", "screen\\n& alerts", "privacy", "software", "system"):
     assert f'"{label}"' in HOME, label
 
 

@@ -30,7 +30,7 @@ SP_ICONS = "../../sunnypilot/selfdrive/assets"
 
 class SettingsLayoutSP(OP.SettingsLayout):
   """RehkopfPilot settings home: five groups by task instead of one page per code owner.
-  driving / screen & alerts / privacy & recording / software / device & developer"""
+  driving / screen & alerts / privacy / software / system"""
   def __init__(self):
     # the stock pages are built once here and opened from inside the groups
     NavScroller.__init__(self)
@@ -52,10 +52,11 @@ class SettingsLayoutSP(OP.SettingsLayout):
 
     groups = [
       ("driving", "icons_mici/settings/device/lkas.png", 64, 64, DrivingGroup()),
-      ("screen &\nalerts", "icons_mici/settings/device/info.png", 64, 64, ScreenGroup()),
-      ("privacy &\nrecording", "icons_mici/settings/device/cameras.png", 64, 64, RecordingGroup()),
+      # "&" starts the second line so the first line stays clear of the icon; longer names truncate on the card
+      ("screen\n& alerts", "icons_mici/settings/device/info.png", 64, 64, ScreenGroup()),
+      ("privacy", "icons_mici/settings/device/cameras.png", 64, 64, RecordingGroup()),
       ("software", "icons_mici/settings/software.png", 64, 75, self._software_group),
-      ("device &\ndeveloper", "icons_mici/settings/device_icon.png", 72, 58, self._device_group),
+      ("system", "icons_mici/settings/device_icon.png", 72, 58, self._device_group),
     ]
     group_buttons = []
     for text, icon, w, h, page in groups:

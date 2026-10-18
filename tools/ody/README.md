@@ -152,3 +152,4 @@ Add one line each time Q/A finds something new. Turn it into a prepush check whe
 - **Throwaway worktrees need `GIT_LFS_SKIP_SMUDGE=1`.** Otherwise checkout and cherry-pick fail on LFS files from sunnypilot's Hugging Face store.
 - **When upstream changes direction, cherry-pick instead of merging.** comma 0.11.3 makes Auto-speed permanent and sunnypilot removed DEC, so the October 16 sync is not merged whole. Before a pick, read its `params_keys.h` and cereal changes.
 - **Settings pages only exist once the UI builds them.** Unit tests didn't catch a crash on first render (a `ui_state` attribute that the UI main loop sets at startup). Covered by `settings_ui`. To review a layout, open the PNGs it writes; scrolled screenshots cut cards in half.
+- **Settings card labels fit about 9 characters per line next to the icon.** Longer first lines run into the icon; longer second lines get cut to "...". Check the `settings_ui` renders after renaming anything.
