@@ -26,7 +26,7 @@ If this build is useful to you, the thanks go to them. If you have an Odyssey an
 | Branch | Status | Install URL |
 |---|---|---|
 | `ody-next` | My daily driver. Currently **Atlanta**. | `installer.comma.ai/prehkopf/ody-next` |
-| `ody-test` | The next release, on test drives before it moves to `ody-next`. Currently **Buckhead**. Also has a **van load** setting (Empty / Family / Family + luggage) that adds gas for a heavier van; still being calibrated on loaded drives. | `installer.comma.ai/prehkopf/ody-test` |
+| `ody-test` | The next release, on test drives before it moves to `ody-next`. Currently **Buckhead SP1**. Also has a **van load** setting (Empty / Family / Family + luggage) that adds gas for a heavier van; still being calibrated on loaded drives. | `installer.comma.ai/prehkopf/ody-test` |
 | MVL's branches (`sp-honda-*`, …) | Unchanged mirrors of [mvl-boston/openpilot](https://github.com/mvl-boston/openpilot) | through the branch switcher |
 
 The matching car code lives in [prehkopf/opendbc](https://github.com/prehkopf/opendbc) on branches of the same names.
@@ -35,7 +35,20 @@ The matching car code lives in [prehkopf/opendbc](https://github.com/prehkopf/op
 
 Each release is named after a place in Georgia, A to Z, and versioned by its release date (`YYYY.MM.DD`, with `.2`, `.3` for later releases the same day). The comma shows the name on the home screen and startup banner, for example "Buckhead • 5c3aa0d", and shows a short "what's new" card after an update.
 
-### Buckhead (2026.10.18.2): on `ody-test`
+### Buckhead SP1 (2026.10.18.3): on `ody-test`
+
+A service pack: Buckhead plus fixes picked from upstream on 2026-10-18.
+
+- **More gas when the van needs it** (brikowski 6d4b34f8, from his 2026-10-13 stable release). The gas feedback can now use all the gas headroom the map leaves, not just a fixed amount. This should help on hills and pull-aways.
+- **No duplicate MADS "can't engage" alerts** (sunnypilot #1949).
+- **Smoother steering on engage.** The model starts from the previous curvature while steering is off (comma #39091).
+- **GPS startup fixes** (comma #39071, #39083). comma #39079 (start from the last GPS position) is left out: it stores LastGPSPosition in a binary format that sunnypilot's map features (map Smart Cruise Control, map speed limits) cannot read.
+- **Steadier timing after a hiccup.** Control loops resync after a stall instead of running catch-up frames (comma #39095).
+- **Offroad alert when uploads are being ignored** (comma #39104).
+- **Not taken on purpose:** comma 0.11.3 makes Experimental mode ("Auto-speed") permanent and removes Chill mode, and sunnypilot then removed Dynamic Experimental Control. RehkopfPilot keeps DEC.
+- **Tests:** an Odyssey downhill test now checks against the Odyssey's own gas-map floor (-0.2) instead of MVL's generic Bosch value.
+
+### Buckhead (2026.10.18.2)
 
 - **Turn vs lane change.** With the blinker on, braking in the last 2 seconds means a turn, not a lane change, so turning the wheel no longer starts a lane change. On replays of my drives, lane changes started at intersections dropped from 19 to 9, and all 12 real lane changes still worked.
 - **Status pills** on the comma four: following gap to the car ahead (seconds while moving, feet when stopped), the van load setting, and why Dynamic Experimental Control switched to Experimental (`STOP AHEAD`, `SLOWING`, `CURVE`, `STOPPED`, `COLLISION`).
