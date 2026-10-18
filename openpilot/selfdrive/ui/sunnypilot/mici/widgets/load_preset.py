@@ -30,7 +30,10 @@ class LoadPresetToggle(BigMultiToggle):
     super().__init__("van load", list(PRESETS), select_callback=self._on_select,
                      description="Odyssey only. Adds gas for a heavier van, applied within a few seconds.")
     self._params = params
-    self.set_value(label_for(params.get("OdysseyLoadPreset", return_default=True)))
+    self.refresh()
+
+  def refresh(self):
+    self.set_value(label_for(self._params.get("OdysseyLoadPreset", return_default=True)))
 
   def _on_select(self, label: str):
     if label in PRESETS:
