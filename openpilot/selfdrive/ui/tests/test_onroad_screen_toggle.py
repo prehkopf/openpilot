@@ -1,7 +1,7 @@
 from types import SimpleNamespace
 import unittest
 
-from openpilot.selfdrive.ui.sunnypilot.mici.widgets.onroad_screen import (BRIGHTNESS_AUTO, BRIGHTNESS_SCREEN_OFF, CUSTOM, PRESETS,
+from openpilot.selfdrive.ui.sunnypilot.mici.widgets.onroad_screen import (BRIGHTNESS_AUTO, BRIGHTNESS_AUTO_DARK, BRIGHTNESS_SCREEN_OFF, CUSTOM, PRESETS,
                                                                           OnroadScreenToggle, preset_for)
 
 
@@ -17,6 +17,7 @@ class TestOnroadScreenToggle(unittest.TestCase):
   def test_preset_for(self):
     self.assertEqual(preset_for(BRIGHTNESS_AUTO, 15), "always on")
     self.assertEqual(preset_for(BRIGHTNESS_AUTO, 600), "always on")
+    self.assertEqual(preset_for(BRIGHTNESS_AUTO_DARK, 15), "dim at night")
     self.assertEqual(preset_for(BRIGHTNESS_SCREEN_OFF, 15), "off after 15s")
     self.assertEqual(preset_for(BRIGHTNESS_SCREEN_OFF, 180), "off after 3m")
     self.assertEqual(preset_for(BRIGHTNESS_SCREEN_OFF, 300), CUSTOM)  # e.g. 5m set from sunnylink
@@ -38,6 +39,16 @@ class TestOnroadScreenToggle(unittest.TestCase):
   def test_always_on_keeps_timer(self):
     t = self._select("always on", OnroadScreenOffBrightness=2, OnroadScreenOffTimer=180)
     self.assertEqual(t._params.values, {"OnroadScreenOffBrightness": BRIGHTNESS_AUTO, "OnroadScreenOffTimer": 180})
+
+  def test_dim_at_night_keeps_timer(self):
+    t = self._select("dim at night", OnroadScreenOffBrightness=0, OnroadScreenOffTimer=180)
+    self.assertEqual(t._params.values, {"OnroadScreenOffBrightness": BRIGHTNESS_AUTO_DARK, "OnroadScreenOffTimer": 180})
+
+  def test_dim_at_night_is_dimmer_in_the_dark(self):
+    # sunnypilot's onroad brightness floor: 30% on Auto, 10% on Auto (Dark)
+    from openpilot.selfdrive.ui.sunnypilot.ui_state import DeviceSP
+    self.assertEqual(DeviceSP.set_min_onroad_brightness(SimpleNamespace(onroad_brightness=BRIGHTNESS_AUTO), 30), 30)
+    self.assertEqual(DeviceSP.set_min_onroad_brightness(SimpleNamespace(onroad_brightness=BRIGHTNESS_AUTO_DARK), 30), 10)
 
   def test_presets_use_allowed_timer_values(self):
     # the sunnylink picker and params migration only accept these

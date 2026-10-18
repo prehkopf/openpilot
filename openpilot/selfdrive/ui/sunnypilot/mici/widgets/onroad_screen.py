@@ -9,11 +9,13 @@ from openpilot.selfdrive.ui.mici.widgets.button import BigMultiToggle
 
 # OnroadScreenOffBrightness values, see sunnypilot/layouts/settings/display.py OnroadBrightness
 BRIGHTNESS_AUTO = 0
+BRIGHTNESS_AUTO_DARK = 1  # auto brightness, but the floor in the dark is 10% instead of 30%
 BRIGHTNESS_SCREEN_OFF = 2
 
 # label -> (OnroadScreenOffBrightness, OnroadScreenOffTimer seconds or None to leave as is)
 PRESETS = {
   "always on": (BRIGHTNESS_AUTO, None),
+  "dim at night": (BRIGHTNESS_AUTO_DARK, None),
   "off after 15s": (BRIGHTNESS_SCREEN_OFF, 15),
   "off after 3m": (BRIGHTNESS_SCREEN_OFF, 180),
 }
@@ -23,6 +25,8 @@ CUSTOM = "custom"
 def preset_for(brightness: int, timer: int) -> str:
   if brightness == BRIGHTNESS_AUTO:
     return "always on"
+  if brightness == BRIGHTNESS_AUTO_DARK:
+    return "dim at night"
   for label, (b, t) in PRESETS.items():
     if b == brightness and t == timer:
       return label
@@ -38,7 +42,8 @@ class OnroadScreenToggle(BigMultiToggle):
     # keep a value set from sunnylink visible until the user cycles away from it
     options = list(PRESETS) + ([CUSTOM] if current == CUSTOM else [])
     super().__init__("onroad screen", options, select_callback=self._on_select,
-                     description="Turn the screen off while driving. A tap or any alert wakes it.")
+                     description="Turn the screen off while driving, or keep it on but dimmer at night.\n"
+                                 + "A tap or any alert wakes it.")
     self._params = params
     self.set_value(current)
 
