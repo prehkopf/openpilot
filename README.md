@@ -26,7 +26,7 @@ If this build is useful to you, the thanks go to them. If you have an Odyssey an
 | Branch | Status | Install URL |
 |---|---|---|
 | `ody-next` | My daily driver. Currently **Atlanta**. | `installer.comma.ai/prehkopf/ody-next` |
-| `ody-test` | The next release, on test drives before it moves to `ody-next`. Currently **Chattahoochee**. Also has a **van load** setting (Empty / Family / Family + luggage) that adds gas for a heavier van; still being calibrated on loaded drives. | `installer.comma.ai/prehkopf/ody-test` |
+| `ody-test` | The next release, on test drives before it moves to `ody-next`. Currently **Dahlonega**. Also has a **van load** setting (Empty / Family / Family + luggage) that adds gas for a heavier van; still being calibrated on loaded drives. | `installer.comma.ai/prehkopf/ody-test` |
 | MVL's branches (`sp-honda-*`, …) | Unchanged mirrors of [mvl-boston/openpilot](https://github.com/mvl-boston/openpilot) | through the branch switcher |
 
 The matching car code lives in [prehkopf/opendbc](https://github.com/prehkopf/opendbc) on branches of the same names.
@@ -35,7 +35,18 @@ The matching car code lives in [prehkopf/opendbc](https://github.com/prehkopf/op
 
 Each release is named after a place in Georgia, A to Z, and versioned by its release date (`YYYY.MM.DD`, with `.2`, `.3` for later releases the same day). The comma shows the name on the home screen and startup banner, for example "Buckhead • 5c3aa0d", and shows a short "what's new" card after an update.
 
-### Chattahoochee (2026.10.18.4): on `ody-test`
+### Dahlonega (2026.10.18.5): on `ody-test`
+
+Chattahoochee plus a quicker launch from a stop.
+
+- **Green-light launch.** From a stop, the driving model's plan creeps before it commits to moving. Once it plans to be past 2 m/s (4.5 mph) within 3.5 s, openpilot takes the acceleration from the part of the plan where it is already moving: up to 1.5 m/s², fading out by 2 m/s. It never overrides the car ahead: the planner still takes the lowest of the model, lead-following and cruise targets. Ported from comma's unmerged `better-green-lights` branch, gated on Dynamic Experimental Control's model mode.
+  - On my drives the plan asked for only 0.13-0.29 m/s² in the second before moving; this asks for 1.44-1.50. Across all 16 pulled drives it would have fired only at the 3 launches with openpilot longitudinal, 7.2 s in total.
+- **MADS brake-pause fix** (sunnypilot PR #2031): with steering-on-brake set to Pause, holding the brake from before MADS engaged no longer ends in "take control immediately".
+- **Checked and left out:**
+  - comma's gentler final-stop ramp (#38658): my 4 openpilot stops already ended gently (-0.06 to -0.27 m/s²).
+  - sunnypilot's Honda Brake Hold disengage (#2039): Brake Hold never turned on in 16 drives.
+
+### Chattahoochee (2026.10.18.4)
 
 Buckhead SP1 plus a reorganized settings menu on the comma four.
 
