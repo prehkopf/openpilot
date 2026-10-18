@@ -53,7 +53,11 @@ step pytest bash -c "cd openpilot && python -m pytest -q -p no:cacheprovider -n 
   --deselect openpilot/selfdrive/locationd/test/test_calibrationd.py::TestCalibrationd::test_calibration_auto_reset \
   --deselect openpilot/selfdrive/locationd/test/test_locationd_scenarios.py::TestLocationdScenarios::test_consistent_gyro_spikes \
   --deselect openpilot/selfdrive/locationd/test/test_locationd_scenarios.py::TestLocationdScenarios::test_consistent_timing_spikes \
+  --deselect openpilot/sunnypilot/selfdrive/locationd/tests/test_locationd.py::TestLocationdProc::test_params_gps \
   -k 'not onroad and not power_draw and not test_models_segs'"
+#    timing-sensitive (waits 5 s for a param); alone and retried so CPU load from the parallel run can't fail it
+step locationd_gps bash -c "cd openpilot && for i in 1 2 3; do timeout 120 python -m pytest -q -p no:cacheprovider --timeout=60 \
+  sunnypilot/selfdrive/locationd/tests/test_locationd.py::TestLocationdProc::test_params_gps && exit 0; done; exit 1"
 step honda_car env PYTHONPATH="$ROOT/opendbc_repo:$ROOT" python -m pytest -q -p no:cacheprovider opendbc_repo/opendbc/car/honda/tests
 step honda_safety env PYTHONPATH="$ROOT/opendbc_repo:$ROOT" python -m pytest -q -p no:cacheprovider opendbc_repo/opendbc/safety/tests/test_honda.py
 

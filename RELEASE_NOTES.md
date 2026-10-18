@@ -8,6 +8,7 @@ to 3-4 short lines (30 characters at most) so it fits the card.
 - Pills: gap, why DEC slows
 - 2x CANCEL = bookmark
 - Night dim, saved settings
+- Bug fixes & improvements
 
 ## Atlanta
 - Status pills: OP LONG, DEC

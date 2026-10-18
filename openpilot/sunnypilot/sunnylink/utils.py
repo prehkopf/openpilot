@@ -1,4 +1,5 @@
 import base64
+import binascii
 import gzip
 import json
 from openpilot.sunnypilot.sunnylink.api import SunnylinkApi, UNREGISTERED_SUNNYLINK_DONGLE_ID
@@ -91,14 +92,27 @@ def save_param_from_base64_encoded_string(param_name: str, base64_encoded_data: 
   params = Params()
   # Find real param name (with correct casing)
   param_type = params.get_type(param_name)
-  value = base64.b64decode(base64_encoded_data)
-
-  if is_compressed:
-    value = gzip.decompress(value)
+  value = _decode_param_value(base64_encoded_data, param_type, is_compressed)
 
   # We convert to string anything that isn't bytes first. We later transform further.
   param_value = _convert_param_to_type(value, param_type)
   params.put(param_name, param_value, block=True)
+
+
+def _decode_param_value(data: str, param_type: ParamKeyType, is_compressed: bool) -> bytes:
+  """base64 (optionally gzipped) to bytes. RehkopfPilot: a text setting that isn't valid base64 text is taken as
+  plain text, since the sunnylink web app has been seen sending some (OsmLocationTitle) unencoded."""
+  try:
+    value = base64.b64decode(data, validate=True)
+    if is_compressed:
+      value = gzip.decompress(value)
+    if param_type != ParamKeyType.BYTES:
+      value.decode('utf-8')
+    return value
+  except (binascii.Error, UnicodeDecodeError, OSError, EOFError):
+    if param_type == ParamKeyType.STRING and not is_compressed:
+      return data.encode('utf-8')
+    raise
 
 
 def _convert_param_to_type(value: bytes, param_type: ParamKeyType) -> bytes | str | int | float | bool | dict | None:
