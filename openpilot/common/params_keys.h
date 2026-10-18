@@ -32,7 +32,8 @@ inline static std::unordered_map<std::string, ParamKeyAttributes> keys = {
     {"DisableLogging", {CLEAR_ON_MANAGER_START | CLEAR_ON_ONROAD_TRANSITION, BOOL}},
     {"DisablePowerDown", {PERSISTENT | BACKUP, BOOL}},
     {"DisableUpdates", {PERSISTENT | BACKUP, BOOL, "0"}},
-    {"SettingsProfileApplied", {PERSISTENT, STRING}},  // RehkopfPilot settings_profile.json version last applied
+    {"SettingsProfileApplied", {PERSISTENT, STRING}},
+    {"WhatsNewSeenBuild", {PERSISTENT, STRING}},  // RehkopfPilot: codename whose what's-new card was last shown  // RehkopfPilot settings_profile.json version last applied
     {"DisengageOnAccelerator", {PERSISTENT | BACKUP, BOOL, "0"}},
     {"DongleId", {PERSISTENT, STRING}},
     {"DoReboot", {CLEAR_ON_MANAGER_START, BOOL}},
@@ -213,6 +214,7 @@ inline static std::unordered_map<std::string, ParamKeyAttributes> keys = {
     {"ObdMultiplexingChanged", {CLEAR_ON_MANAGER_START | CLEAR_ON_ONROAD_TRANSITION, BOOL}},
     {"ObdMultiplexingEnabled", {CLEAR_ON_MANAGER_START | CLEAR_ON_ONROAD_TRANSITION, BOOL}},
     {"Offroad_CarUnrecognized", {CLEAR_ON_MANAGER_START | CLEAR_ON_ONROAD_TRANSITION, JSON}},
+    {"Offroad_WhatsNew", {CLEAR_ON_ONROAD_TRANSITION, JSON}},  // RehkopfPilot: shown after an update until the next drive
     {"Offroad_ChestnutBranch", {CLEAR_ON_MANAGER_START, JSON}},
     {"Offroad_ChestnutModelError", {CLEAR_ON_MANAGER_START, JSON}},
     {"Offroad_ChestnutNotDetected", {CLEAR_ON_MANAGER_START | CLEAR_ON_ONROAD_TRANSITION, JSON}},

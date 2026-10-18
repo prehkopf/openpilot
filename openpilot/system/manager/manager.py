@@ -11,6 +11,8 @@ import openpilot.cereal.messaging as messaging
 from openpilot.common.utils import atomic_write
 from openpilot.common.params import Params, ParamKeyFlag
 from openpilot.common.settings_profile import apply_settings_profile
+from openpilot.common.whats_new import show_whats_new
+from openpilot.selfdrive.selfdrived.alertmanager import set_offroad_alert
 from openpilot.common.text_window import TextWindow
 from openpilot.common.hardware import HARDWARE, PC
 from openpilot.system.manager.helpers import unblock_stdout, save_bootlog
@@ -61,6 +63,7 @@ def manager_init() -> None:
 
   # RehkopfPilot baseline settings, once per profile version (so again after a reinstall)
   apply_settings_profile(params)
+  show_whats_new(params, set_offroad_alert)
 
   # Create folders needed for msgq
   try:
