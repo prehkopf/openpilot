@@ -55,10 +55,18 @@ step pytest bash -c "cd openpilot && python -m pytest -q -p no:cacheprovider -n 
   --deselect openpilot/selfdrive/locationd/test/test_locationd_scenarios.py::TestLocationdScenarios::test_consistent_timing_spikes \
   --deselect openpilot/sunnypilot/selfdrive/locationd/tests/test_locationd.py::TestLocationdProc::test_params_gps \
   -k 'not onroad and not power_draw and not test_models_segs'"
-#    timing-sensitive (waits 5 s for a param); alone and retried so CPU load from the parallel run can't fail it
+#    timing-sensitive (waits 5 s for a param); alone and retried so CPU load from the parallel run can't fail it.
+#    It passes 10/10 on a quiet machine but failed 3 back-to-back retries right after the parallel run, so wait
+#    (up to 60 s) for the 1-minute load average to drop under a quarter of the cores, and pause between retries.
+settle() { for _ in $(seq 30); do awk -v n="$(nproc)" '{exit !($1 < n / 4)}' /proc/loadavg && return; sleep 2; done; }
+settle
 step locationd_gps bash -c "cd openpilot && for i in 1 2 3; do timeout 120 python -m pytest -q -p no:cacheprovider --timeout=60 \
-  sunnypilot/selfdrive/locationd/tests/test_locationd.py::TestLocationdProc::test_params_gps && exit 0; done; exit 1"
+  sunnypilot/selfdrive/locationd/tests/test_locationd.py::TestLocationdProc::test_params_gps && exit 0; sleep 10; done; exit 1"
 step honda_car env PYTHONPATH="$ROOT/opendbc_repo:$ROOT" python -m pytest -q -p no:cacheprovider opendbc_repo/opendbc/car/honda/tests
+#    same tests split across workers: the Odyssey get_params sets class-level CarControllerParams values, so a test
+#    can pass serially only because an earlier test built Odyssey params in the same process
+step honda_car_parallel env PYTHONPATH="$ROOT/opendbc_repo:$ROOT" python -m pytest -q -p no:cacheprovider -n "$(nproc)" \
+  opendbc_repo/opendbc/car/honda/tests
 step honda_safety env PYTHONPATH="$ROOT/opendbc_repo:$ROOT" python -m pytest -q -p no:cacheprovider opendbc_repo/opendbc/safety/tests/test_honda.py
 
 # 5. card + controlsd from this build on a recorded Odyssey drive (newest pulled segment with openpilot long)
@@ -69,7 +77,14 @@ if [ -n "$SEG" ]; then step replay python tools/ody/replay_segments.py "$SEG"; e
 python "$CHECKS/pin_check.py" > "$LOG/pins.log" 2>&1; sed 's/^/        /' "$LOG/pins.log"
 grep -q "^WARN" "$LOG/pins.log" && warn "submodule pins: see above"
 
-# 7. release bump: a push to ody-next/ody-test should carry a new codename + release-date version
+# 7. release audit vs the published branch: params keys whose type changed (and their readers), commits with
+#    no real author identity in openpilot or in the opendbc pin range
+if [ -n "$TARGET" ] && git rev-parse -q --verify "origin/$TARGET" >/dev/null; then
+  step release_audit python -I "$CHECKS/release_audit.py" "$ROOT" "origin/$TARGET"
+  while read -r w; do warn "$w"; done < <(grep "^WARN" "$LOG/release_audit.log" | sed 's/^WARN //')
+fi
+
+# 8. release bump: a push to ody-next/ody-test should carry a new codename + release-date version
 if [ -n "$TARGET" ] && git rev-parse -q --verify "origin/$TARGET" >/dev/null; then
   git diff --quiet "origin/$TARGET" HEAD -- BUILD_NAME && warn "BUILD_NAME unchanged vs origin/$TARGET (next codename? see NOTES)"
   git diff --quiet "origin/$TARGET" HEAD -- openpilot/sunnypilot/common/version.h && warn "version.h unchanged vs origin/$TARGET (should be today's date YYYY.MM.DD)"

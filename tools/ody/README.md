@@ -26,9 +26,12 @@ What it checks, and why:
 - **models:** loads and runs the stock driving model and driver monitoring through their real entry points (`checks/model_e2e.py`). No unit test starts these processes. In October 2026 a tinygrad pin that didn't match comma's model code crashed driver monitoring on the device and blocked onboarding. With that pin put back, this check fails.
 - **imports / params / services:** static scans (`checks/`) for imports of modules or names that no longer exist, params keys that aren't registered, and SubMaster/PubMaster services cereal doesn't know. Upstream merges break all three silently.
 - **pytest:** openpilot + sunnypilot unit and UI tests. Three locationd/calibrationd scenario tests are deselected because they assert comma's thresholds, which MVL widened on purpose for mount tolerance.
+- **locationd_gps:** sunnypilot's `test_params_gps` waits a fixed 5 s for a param, so it runs alone after the parallel step. Prepush first waits up to 60 s for the load average to drop, then retries with a pause. It passes 10/10 on a quiet machine but failed 3 back-to-back retries right after the parallel run.
 - **honda_car / honda_safety:** opendbc's Honda car tests (including `test_odyssey_port.py`) and panda safety tests.
+- **honda_car_parallel:** the same car tests split across workers. The Odyssey `get_params` sets class-level `CarControllerParams` values, so a test can pass serially only because an earlier test built Odyssey params in the same process. A downhill test did exactly that from Atlanta through Buckhead.
 - **replay:** card + controlsd from this build on a recorded Odyssey segment (`--rlogs DIR`, default `Documents\openpilot\rlogs`).
 - **pins (informational):** whether our tinygrad contains the pin comma master expects, and how msgq/rednose/panda compare.
+- **release_audit:** compares with the published branch (`checks/release_audit.py`). Fails if a params key changed type, and lists every reader of that key. Fails on any commit authored as `root` in openpilot or in the opendbc pin range. Warns about params keys added or removed.
 - **release bump (warning):** a push should carry the next codename in `BUILD_NAME` and today's date as the version.
 
 ## Setup (once)
@@ -132,3 +135,18 @@ What to look at after a drive:
 2. Merge, in this order: sunnypilot sync, then MVL dev, then comma master, then brikowski's Odyssey commits.
 3. Run layers 1 through 4.
 4. Push code only: `GIT_LFS_SKIP_PUSH=1 git push origin <branch>`. In my clone this is the `git push-code` alias. Models come from sunnypilot's Hugging Face store, so they never need to go to GitHub.
+
+## Lessons learned
+
+Add one line each time Q/A finds something new. Turn it into a prepush check when you can.
+
+- **Check submodule pins when taking comma code.** A tinygrad pin that didn't match comma's model code crashed driver monitoring on the device. Covered by `models` and `pins`.
+- **Run the processes no unit test starts.** Covered by `models`.
+- **After switching branches, run a full `scons`.** Params keys are compiled into `libparams_c.so`, so a stale build fails with UnknownKeyName. Covered by `build`.
+- **Run opendbc tests with `PYTHONPATH=$ROOT/opendbc_repo:$ROOT`.** Without it, the venv's installed opendbc is imported and the results mean nothing. Prepush already does this; it matters for hand runs.
+- **Tests ported from brikowski can read the wrong constant.** In his tree `CarControllerParams` class values are comma's (gas map floor -0.2). Here they are MVL's (0.0) until the Odyssey `get_params` overwrites them. Ported tests should use the Odyssey constants (`ODYSSEY_GAS_MAP_FLOOR`). Covered by `honda_car_parallel`.
+- **Cherry-picks can change a param's type under sunnypilot.** comma #39079 made `LastGPSPosition` binary, and sunnypilot's mapd and map Smart Cruise Control read it as JSON. It was left out of Buckhead SP1. Covered by `release_audit`.
+- **Set the git identity in every repo you commit in, including `opendbc_repo`.** Otherwise WSL commits as `root`. Covered by `release_audit`.
+- **Timing tests fail under load.** Run them alone after the parallel step, wait for the load to drop, and retry with a pause (`locationd_gps`). Before calling something a regression, alternate 10 runs on old and new commits.
+- **Throwaway worktrees need `GIT_LFS_SKIP_SMUDGE=1`.** Otherwise checkout and cherry-pick fail on LFS files from sunnypilot's Hugging Face store.
+- **When upstream changes direction, cherry-pick instead of merging.** comma 0.11.3 makes Auto-speed permanent and sunnypilot removed DEC, so the October 16 sync is not merged whole. Before a pick, read its `params_keys.h` and cereal changes.
