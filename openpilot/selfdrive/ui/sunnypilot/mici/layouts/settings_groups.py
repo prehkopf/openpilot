@@ -80,7 +80,8 @@ class DrivingGroup(GroupLayout):
     self._enable = BigParamControl("enable RehkopfPilot", "OpenpilotEnabledToggle", toggle_callback=restart_needed_callback,
                                    description="Enable to use RehkopfPilot driver assistance.\n" +
                                                "Disable to use your car's stock driver assistance.")
-    super().__init__([self._personality, self._experimental, self._dec, self._load, self._mads, self._lane_change, self._enable])
+    # most-changed first: load changes with every trip, MADS and enable only with the car off
+    super().__init__([self._load, self._personality, self._dec, self._lane_change, self._experimental, self._mads, self._enable])
 
     self._mads.set_enabled(lambda: not ui_state.started)
     self._enable.set_enabled(lambda: not ui_state.engaged)
@@ -108,14 +109,13 @@ class DrivingGroup(GroupLayout):
 
 
 class ScreenGroup(GroupLayout):
-  """What the screen shows and when it warns."""
+  """What the screen shows and when it warns. (No metric toggle: IsMetric stays at its default, mph.)"""
   def __init__(self):
     super().__init__([
       OnroadScreenToggle(),
       BigParamControl("lane departure warnings", "IsLdwEnabled",
                       description="Warn when you drift across a detected lane line.\n" +
                                   "Only above 31 mph (50 km/h), with no turn signal."),
-      BigParamControl("use metric units", "IsMetric"),
     ])
 
 

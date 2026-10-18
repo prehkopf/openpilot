@@ -15,6 +15,11 @@ HOME = (UI / "sunnypilot/mici/layouts/settings.py").read_text()
 DEVICE = (UI / "mici/layouts/settings/device/device_layout.py").read_text()
 STOCK_TOGGLES = (UI / "mici/layouts/settings/toggles.py").read_text()
 
+# stock toggles deliberately left off the comma four menu (the param keeps its default)
+REMOVED_ON_PURPOSE = {
+  "IsMetric": "Patrick drives in mph; the button was clutter (2026-10-18)",
+}
+
 PARAM_CONTROL = re.compile(r'Big(?:Multi)?Param(?:Control|Toggle)\(\s*"[^"]*",\s*"(\w+)"')
 
 
@@ -34,8 +39,21 @@ def test_every_stock_toggle_lives_in_exactly_one_group():
   stock = set(PARAM_CONTROL.findall(STOCK_TOGGLES))
   grouped = PARAM_CONTROL.findall(GROUPS)
   assert stock, "stock toggle page parse found nothing"
-  for key in stock:
+  assert set(REMOVED_ON_PURPOSE) <= stock, "a removed toggle is gone from the stock page; drop it from REMOVED_ON_PURPOSE"
+  for key in stock - set(REMOVED_ON_PURPOSE):
     assert grouped.count(key) == 1, f"{key}: in {grouped.count(key)} groups"
+  for key in REMOVED_ON_PURPOSE:
+    assert key not in grouped, key
+
+
+def test_home_order_is_most_used_first():
+  order = [HOME.index(f'("{label}"') for label in ("driving", "software", "screen\\n& alerts", "privacy", "system")]
+  assert order == sorted(order)
+
+
+def test_driving_order_is_most_used_first():
+  assert ("[self._load, self._personality, self._dec, self._lane_change, self._experimental, self._mads, self._enable]"
+          in GROUPS)
 
 
 def test_moved_pickers_are_in_groups_not_on_device_page():

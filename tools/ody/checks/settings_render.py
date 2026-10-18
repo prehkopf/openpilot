@@ -49,14 +49,10 @@ def frames(widget, name):
 ui_state.update_params()  # the UI main loop does this at startup (sets always_offroad etc.)
 home = SettingsLayoutSP()
 frames(home, "0_home")
-pages = {
-  "1_driving": home._scroller.items[2],
-  "2_screen": home._scroller.items[3],
-  "3_recording": home._scroller.items[4],
-  "4_software": home._scroller.items[5],
-  "5_device": home._scroller.items[6],
-}
-for name, btn in pages.items():
+# every labelled card on the home screen opens a group page; follow the home order, name files by label
+groups = [i for i in home._scroller.items if getattr(getattr(i, "_label", None), "text", "")]
+for n, btn in enumerate(groups, 1):
+  name = f"{n}_" + "".join(c if c.isalnum() else "_" for c in btn._label.text.replace("\n", " ")).strip("_")
   pushed = []
   orig = gui_app.push_widget
   gui_app.push_widget = pushed.append
