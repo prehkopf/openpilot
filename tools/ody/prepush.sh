@@ -62,6 +62,8 @@ settle() { for _ in $(seq 30); do awk -v n="$(nproc)" '{exit !($1 < n / 4)}' /pr
 settle
 step locationd_gps bash -c "cd openpilot && for i in 1 2 3; do timeout 120 python -m pytest -q -p no:cacheprovider --timeout=60 \
   sunnypilot/selfdrive/locationd/tests/test_locationd.py::TestLocationdProc::test_params_gps && exit 0; sleep 10; done; exit 1"
+#    settings pages are built only at UI start and drawn only when opened: build + render every one offscreen
+step settings_ui python tools/ody/checks/settings_render.py "$LOG/settings"
 step honda_car env PYTHONPATH="$ROOT/opendbc_repo:$ROOT" python -m pytest -q -p no:cacheprovider opendbc_repo/opendbc/car/honda/tests
 #    same tests split across workers: the Odyssey get_params sets class-level CarControllerParams values, so a test
 #    can pass serially only because an earlier test built Odyssey params in the same process

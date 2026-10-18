@@ -27,6 +27,7 @@ What it checks, and why:
 - **imports / params / services:** static scans (`checks/`) for imports of modules or names that no longer exist, params keys that aren't registered, and SubMaster/PubMaster services cereal doesn't know. Upstream merges break all three silently.
 - **pytest:** openpilot + sunnypilot unit and UI tests. Three locationd/calibrationd scenario tests are deselected because they assert comma's thresholds, which MVL widened on purpose for mount tolerance.
 - **locationd_gps:** sunnypilot's `test_params_gps` waits a fixed 5 s for a param, so it runs alone after the parallel step. Prepush first waits up to 60 s for the load average to drop, then retries with a pause. It passes 10/10 on a quiet machine but failed 3 back-to-back retries right after the parallel run.
+- **settings_ui:** builds the comma four settings home and every settings group offscreen and renders each onto one wide canvas (`checks/settings_render.py`, PNGs in the prepush log dir). Unit tests never build these pages.
 - **honda_car / honda_safety:** opendbc's Honda car tests (including `test_odyssey_port.py`) and panda safety tests.
 - **honda_car_parallel:** the same car tests split across workers. The Odyssey `get_params` sets class-level `CarControllerParams` values, so a test can pass serially only because an earlier test built Odyssey params in the same process. A downhill test did exactly that from Atlanta through Buckhead.
 - **replay:** card + controlsd from this build on a recorded Odyssey segment (`--rlogs DIR`, default `Documents\openpilot\rlogs`).
@@ -150,3 +151,4 @@ Add one line each time Q/A finds something new. Turn it into a prepush check whe
 - **Timing tests fail under load.** Run them alone after the parallel step, wait for the load to drop, and retry with a pause (`locationd_gps`). Before calling something a regression, alternate 10 runs on old and new commits.
 - **Throwaway worktrees need `GIT_LFS_SKIP_SMUDGE=1`.** Otherwise checkout and cherry-pick fail on LFS files from sunnypilot's Hugging Face store.
 - **When upstream changes direction, cherry-pick instead of merging.** comma 0.11.3 makes Auto-speed permanent and sunnypilot removed DEC, so the October 16 sync is not merged whole. Before a pick, read its `params_keys.h` and cereal changes.
+- **Settings pages only exist once the UI builds them.** Unit tests didn't catch a crash on first render (a `ui_state` attribute that the UI main loop sets at startup). Covered by `settings_ui`. To review a layout, open the PNGs it writes; scrolled screenshots cut cards in half.
