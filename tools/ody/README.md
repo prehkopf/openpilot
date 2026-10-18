@@ -120,6 +120,11 @@ python tools/ody/drive_report/extract.py ~/rlogs/00000008--83edc4fea4 /tmp/r8.js
 python tools/ody/drive_report/engagements.py /tmp/r8.json   # engagements, why each one ended, events, errors
 python tools/ody/drive_report/tracking.py /tmp/r8.json      # accel tracking by request band, gas overrides, lateral error by speed, saturation
 python tools/ody/drive_report/uphill.py /tmp/r8.json [...]  # shortfall against grade (the known ~0.2 m/s² uphill gap)
+
+# straight from rlogs, any number of routes (route prefix = rlogs/<route>, without the segment number)
+python tools/ody/drive_report/steer_cap_report.py ~/rlogs/<route> [...]     # time at the 2560 steering limit / opened to 3840, by speed band
+python tools/ody/drive_report/stop_launch_report.py ~/rlogs/<route> [...]  # Brake Hold, op-long stops and launches
+python tools/ody/drive_report/launch_eval.py ~/rlogs/<route> [...]         # where the green-light launch fires and what is in front
 ```
 
 What to look at after a drive:
