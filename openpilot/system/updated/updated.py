@@ -355,8 +355,20 @@ class Updater:
         remaining = max(HOURS_NO_CONNECTIVITY_MAX - dt_uptime_onroad, 1)
         set_offroad_alert("Offroad_ConnectivityNeededPrompt", True, extra_text=f"{remaining} hour{'' if remaining == 1 else 's'}.")
 
+  def apply_target_remote(self, path: str = OVERLAY_MERGED) -> None:
+    """RehkopfPilot: point origin at the fork picked in the branch switcher (UpdaterTargetRemote) before listing or
+    fetching. The finalized update carries the new origin, so later updates keep following that fork."""
+    url = self.params.get("UpdaterTargetRemote")
+    if not url:
+      return
+    current = run(["git", "remote", "get-url", "origin"], path).strip()
+    if current != url:
+      cloudlog.warning(f"update remote {current} -> {url}")
+      run(["git", "remote", "set-url", "origin", url], path)
+
   def check_for_update(self) -> None:
     cloudlog.info("checking for updates")
+    self.apply_target_remote()
 
     excluded_branches = ('release2', 'release2-staging')
 
@@ -395,6 +407,7 @@ class Updater:
     self.params.put_bool("UpdateAvailable", False, block=True)
 
     setup_git_options(OVERLAY_MERGED)
+    self.apply_target_remote()
 
     run(["git", "config", "--replace-all", "remote.origin.fetch", "+refs/heads/*:refs/remotes/origin/*"], OVERLAY_MERGED)
 

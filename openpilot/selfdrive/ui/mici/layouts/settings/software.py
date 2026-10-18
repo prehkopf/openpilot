@@ -1,4 +1,5 @@
 import subprocess
+from dataclasses import dataclass
 import threading
 import pyray as rl
 from enum import IntEnum
@@ -8,7 +9,7 @@ from openpilot.common.time_helpers import system_time_valid
 from openpilot.selfdrive.ui.mici.layouts.settings.device.device_layout import EngagedConfirmationButton
 from openpilot.selfdrive.ui.mici.widgets.info import InfoLayoutMici
 from openpilot.selfdrive.ui.mici.widgets.button import BigButton
-from openpilot.selfdrive.ui.mici.widgets.dialog import BigDialog, BigInputDialog
+from openpilot.selfdrive.ui.mici.widgets.dialog import BigConfirmationDialog, BigDialog, BigInputDialog
 from openpilot.selfdrive.ui.ui_state import ui_state
 from openpilot.system.ui.lib.application import gui_app, MousePos
 from openpilot.system.ui.lib.multilang import tr
@@ -191,37 +192,145 @@ class InstallUpdateButton(BigButton):
     threading.Thread(target=run, daemon=True).start()
 
 
-# The fork mirrors every MVL branch; only offer the builds that make sense for this van.
-# The installed branch is always listed, and "switch branch" still accepts any name.
-PICKER_BRANCHES = ("ody-next", "ody-test", "sp-honda-202607")
+@dataclass(frozen=True)
+class Fork:
+  name: str
+  url: str
+  branches: tuple[str, ...]  # the builds worth offering for this van; only those that exist on the remote are shown
 
 
-class BranchSelectPage(NavScroller):
-  def __init__(self, on_select: Callable[[str], None]):
+# Pick the fork first, then the branch. The installed branch is always offered for the installed fork, and
+# "switch branch" still accepts any branch name on the target fork.
+FORKS = (
+  Fork("RehkopfPilot", "https://github.com/prehkopf/openpilot.git", ("ody-next", "ody-test")),
+  Fork("MVL", "https://github.com/mvl-boston/openpilot.git", ("sp-honda-202607", "sp-honda-dev-202608")),
+  Fork("brikowski", "https://github.com/brikowski/openpilot.git", ("ody-op", "ody-op-test")),
+  Fork("sunnypilot", "https://github.com/sunnypilot/sunnypilot.git", ("release-mici", "release-mici-staging")),
+  Fork("comma", "https://github.com/commaai/openpilot.git", ("release-mici", "nightly")),
+)
+HOME_FORK = FORKS[0]
+HOME_INSTALL = "prehkopf/ody-next"
+
+
+def _norm(url: str) -> str:
+  return url.strip().lower().rstrip("/").removesuffix(".git")
+
+
+def fork_for_url(url: str) -> Fork | None:
+  return next((f for f in FORKS if _norm(f.url) == _norm(url)), None)
+
+
+def target_remote(params) -> str:
+  """The remote the next update downloads from: the chosen one, else the installed one."""
+  return params.get("UpdaterTargetRemote") or params.get("GitRemote") or HOME_FORK.url
+
+
+def branch_options(fork: Fork, remote_branches: set[str], installed_remote: str, installed_branch: str) -> list[str]:
+  """Branches to offer for a fork: its curated list, filtered to what exists, plus the installed branch on its fork."""
+  options = [b for b in fork.branches if b in remote_branches]
+  if _norm(fork.url) == _norm(installed_remote) and installed_branch in remote_branches and installed_branch not in options:
+    options.insert(0, installed_branch)
+  return options
+
+
+def ls_remote_branches(url: str, timeout: float = 20.0) -> set[str] | None:
+  try:
+    out = subprocess.run(["git", "ls-remote", "--heads", url], capture_output=True, text=True, timeout=timeout, check=True).stdout
+  except (subprocess.SubprocessError, OSError):
+    return None
+  return {line.split("refs/heads/", 1)[1] for line in out.splitlines() if "refs/heads/" in line}
+
+
+class ForkSelectPage(NavScroller):
+  def __init__(self, on_select: Callable[[Fork, str], None]):
     super().__init__()
-
-    params = ui_state.params
-    current_git_branch = params.get("GitBranch") or ""
-    branches_str = params.get("UpdaterAvailableBranches") or ""
-    available = {b for b in branches_str.split(",") if b}
-    branches = [b for b in (current_git_branch, *PICKER_BRANCHES) if b in available]
-    branches = list(dict.fromkeys(branches))  # current branch first, no duplicates
-
-    current_target = params.get("UpdaterTargetBranch") or ""
-    check_icon = gui_app.texture("icons_mici/settings/device/up_to_date.png", 64, 64)
-
+    current = fork_for_url(target_remote(ui_state.params))
+    self._on_select = on_select
     buttons = []
-    for branch in branches:
-      btn = BigButton(branch, "", check_icon if branch == current_target else None, scroll=True)
-      btn.set_click_callback(lambda b=branch: self.dismiss(lambda: on_select(b)))
+    for fork in FORKS:
+      owner = fork.url.split("github.com/")[-1].removesuffix(".git").split("/")[0]
+      # no icon: it would wrap "RehkopfPilot" mid-word; the current fork is marked in the subtitle instead
+      btn = BigButton(fork.name, f"{owner} • current" if fork == current else owner)
+      btn.set_click_callback(lambda f=fork: gui_app.push_widget(ForkBranchPage(f, self._picked)))
       buttons.append(btn)
     self._scroller.add_widgets(buttons)
+
+  def _picked(self, fork: Fork, branch: str):
+    # the branch page has already closed itself; close this one too, then apply the choice
+    self.dismiss(lambda: self._on_select(fork, branch))
+
+
+class ForkBranchPage(NavScroller):
+  """Branches on one fork. Asks GitHub which exist (in the background) so only installable ones are offered."""
+  def __init__(self, fork: Fork, on_select: Callable[[Fork, str], None]):
+    super().__init__()
+    self._fork = fork
+    self._on_select = on_select
+    self._result: set[str] | None = None
+    self._done = threading.Event()
+    self._shown = False
+    self._status = BigButton(fork.name, "checking GitHub...")
+    self._status.set_enabled(False)
+    self._scroller.add_widgets([self._status])
+    threading.Thread(target=self._fetch, daemon=True).start()
+
+  def _fetch(self):
+    self._result = ls_remote_branches(self._fork.url)
+    self._done.set()
+
+  def _update_state(self):
+    super()._update_state()
+    if self._shown or not self._done.is_set():
+      return
+    self._shown = True
+    params = ui_state.params
+    if self._result is None:
+      self._status.set_value("couldn't reach GitHub")
+      return
+    options = branch_options(self._fork, self._result, params.get("GitRemote") or "", params.get("GitBranch") or "")
+    if not options:
+      self._status.set_value("no builds for this van")
+      return
+    check_icon = gui_app.texture("icons_mici/settings/device/up_to_date.png", 64, 64)
+    targeted = fork_for_url(target_remote(params)) == self._fork
+    buttons = []
+    if self._leaving_home():
+      note = BigButton("one-way: reinstall", HOME_INSTALL)  # the value line fits ~17 characters
+      note.set_enabled(False)
+      buttons.append(note)
+    for branch in options:
+      on_target = targeted and branch == (params.get("UpdaterTargetBranch") or "")
+      btn = BigButton(branch, "", check_icon if on_target else None, scroll=True)
+      btn.set_click_callback(lambda b=branch: self._choose(b))
+      buttons.append(btn)
+    self._scroller.items.clear()
+    self._scroller.add_widgets(buttons)
+
+  def _leaving_home(self) -> bool:
+    # other forks' software can't switch back to this fork from their own menus
+    return self._fork != HOME_FORK and fork_for_url(ui_state.params.get("GitRemote") or "") == HOME_FORK
+
+  def _choose(self, branch: str):
+    if self._leaving_home():
+      icon = gui_app.texture("icons_mici/settings/device/update.png", 64, 64)
+      gui_app.push_widget(BigConfirmationDialog(f"switch to {self._fork.name}", icon, confirm_callback=lambda: self._finish(branch)))
+    else:
+      self._finish(branch)
+
+  def _finish(self, branch: str):
+    self.dismiss(lambda: self._on_select(self._fork, branch))
+
+
+def target_label(params) -> str:
+  fork = fork_for_url(target_remote(params))
+  branch = params.get("UpdaterTargetBranch") or ""
+  return f"{fork.name}/{branch}" if fork and fork != HOME_FORK else branch
 
 
 class TargetBranchButton(BigButton):
   def __init__(self, check_update_btn: CheckUpdateButton):
-    super().__init__("target branch", ui_state.params.get("UpdaterTargetBranch") or "",
-                     description="Select the software branch to download on the next update check.")
+    super().__init__("target branch", target_label(ui_state.params),
+                     description="Pick whose software (RehkopfPilot, MVL, brikowski, ...) and which build to download.")
     self._check_update_btn = check_update_btn
     self.set_click_callback(self._on_click)
     self.set_visible(not ui_state.params.get_bool("IsTestedBranch"))
@@ -230,19 +339,17 @@ class TargetBranchButton(BigButton):
   def _update_state(self):
     super()._update_state()
 
-    target = ui_state.params.get("UpdaterTargetBranch") or ""
+    target = target_label(ui_state.params)
     if self.get_value() != target:
       self.set_value(target)
 
   def _on_click(self):
-    if not ui_state.params.get("UpdaterAvailableBranches"):
-      gui_app.push_widget(BigDialog("", tr("Failed to get available branches. Ensure you're connected to the internet and try again.")))
-      return
-    gui_app.push_widget(BranchSelectPage(self._on_select))
+    gui_app.push_widget(ForkSelectPage(self._on_select))
 
-  def _on_select(self, branch: str):
+  def _on_select(self, fork: Fork, branch: str):
+    ui_state.params.put("UpdaterTargetRemote", fork.url, block=True)
     ui_state.params.put("UpdaterTargetBranch", branch, block=True)
-    self.set_value(branch)
+    self.set_value(target_label(ui_state.params))
     self._check_update_btn.check_for_update()
 
 
