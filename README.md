@@ -26,7 +26,7 @@ If this build is useful to you, the thanks go to them. If you have an Odyssey an
 | Branch | Status | Install URL |
 |---|---|---|
 | `ody-next` | My daily driver. Currently **Atlanta**. | `installer.comma.ai/prehkopf/ody-next` |
-| `ody-test` | The next release, on test drives before it moves to `ody-next`. Currently **Buckhead SP1**. Also has a **van load** setting (Empty / Family / Family + luggage) that adds gas for a heavier van; still being calibrated on loaded drives. | `installer.comma.ai/prehkopf/ody-test` |
+| `ody-test` | The next release, on test drives before it moves to `ody-next`. Currently **Chattahoochee**. Also has a **van load** setting (Empty / Family / Family + luggage) that adds gas for a heavier van; still being calibrated on loaded drives. | `installer.comma.ai/prehkopf/ody-test` |
 | MVL's branches (`sp-honda-*`, …) | Unchanged mirrors of [mvl-boston/openpilot](https://github.com/mvl-boston/openpilot) | through the branch switcher |
 
 The matching car code lives in [prehkopf/opendbc](https://github.com/prehkopf/opendbc) on branches of the same names.
@@ -35,7 +35,18 @@ The matching car code lives in [prehkopf/opendbc](https://github.com/prehkopf/op
 
 Each release is named after a place in Georgia, A to Z, and versioned by its release date (`YYYY.MM.DD`, with `.2`, `.3` for later releases the same day). The comma shows the name on the home screen and startup banner, for example "Buckhead • 5c3aa0d", and shows a short "what's new" card after an update.
 
-### Buckhead SP1 (2026.10.18.3): on `ody-test`
+### Chattahoochee (2026.10.18.4): on `ody-test`
+
+Buckhead SP1 plus a reorganized settings menu on the comma four.
+
+- **Settings in five groups, most-used first:** driving, software, screen & alerts, privacy, system. Before, options were spread over Toggles, Device, Developer, Software and the sunnylink web app.
+- **Driving** starts with **van load**, then personality, Dynamic Experimental Control, lane change, Experimental mode, MADS and enable RehkopfPilot.
+- **MADS on/off and lane change mode** (nudge, nudgeless, 0.5-3 s, off) can now be changed on the comma. Before, only the sunnylink web app had them. MADS only changes with the car off, as in sunnypilot.
+- Van load and onroad screen moved off the Device page, so nothing appears twice. The metric units button is gone (the setting stays at mph).
+- **Software** holds updates & branch, models and sunnylink. **System** holds device, network, developer and firehose. Pairing still opens straight to the pairing card.
+- **Testing:** new tests fail if a stock toggle is lost or appears in two groups. The pre-push checklist now builds and renders every settings page.
+
+### Buckhead SP1 (2026.10.18.3)
 
 A service pack: Buckhead plus fixes picked from upstream on 2026-10-18.
 

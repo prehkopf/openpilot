@@ -3,6 +3,12 @@
 One section per codename (see BUILD_NAME). The comma shows the current one as a card after an update. Keep each
 to 3-4 short lines (30 characters at most) so it fits the card.
 
+## Chattahoochee
+- Settings in 5 groups
+- Van load comes first
+- MADS & lane change on device
+- Bug fixes & improvements
+
 ## Buckhead SP1
 - Gas uses all its headroom
 - No double MADS alerts
