@@ -1,6 +1,6 @@
-# sunnypilot for the Honda Odyssey (prehkopf)
+# RehkopfPilot: sunnypilot for the Honda Odyssey
 
-This is my personal build for a **2022 Honda Odyssey** (`HONDA_ODYSSEY_5G_MMR`, Bosch) on a **comma four**, with openpilot longitudinal control. It combines three people's work:
+**RehkopfPilot** is my personal build for a **2022 Honda Odyssey** (`HONDA_ODYSSEY_5G_MMR`, Bosch) on a **comma four**, with openpilot longitudinal control. It combines three people's work:
 
 - [**sunnypilot**](https://github.com/sunnypilot/sunnypilot): the feature set (MADS, Dynamic Experimental Control and the rest).
 - [**MVL (mvl-boston)**](https://github.com/mvl-boston/openpilot): his Honda dev branch.
@@ -8,7 +8,7 @@ This is my personal build for a **2022 Honda Odyssey** (`HONDA_ODYSSEY_5G_MMR`, 
 
 All three sit on top of [comma.ai's openpilot](https://github.com/commaai/openpilot).
 
-Almost nothing here is mine. My part is merging the three, the Odyssey-specific fixes needed to make them agree, and the testing. Credit for anything that drives well belongs to the people below.
+Almost nothing here is mine. My part is merging the three, the Odyssey-specific fixes needed to make them agree, a few comma four screen features, and the testing. Credit for anything that drives well belongs to the people below.
 
 ## Credits
 
@@ -25,11 +25,54 @@ If this build is useful to you, the thanks go to them. If you have an Odyssey an
 
 | Branch | Status | Install URL |
 |---|---|---|
-| `ody-next` | My daily driver | `installer.comma.ai/prehkopf/ody-next` |
-| `ody-test` | Experimental. `ody-next` plus a **van load** setting (Empty / Family / Family + luggage) that adds gas for a heavier van. Still being calibrated on loaded drives. | `installer.comma.ai/prehkopf/ody-test` |
+| `ody-next` | My daily driver. Currently **Atlanta**. | `installer.comma.ai/prehkopf/ody-next` |
+| `ody-test` | The next release, on test drives before it moves to `ody-next`. Currently **Buckhead**. Also has a **van load** setting (Empty / Family / Family + luggage) that adds gas for a heavier van; still being calibrated on loaded drives. | `installer.comma.ai/prehkopf/ody-test` |
 | MVL's branches (`sp-honda-*`, …) | Unchanged mirrors of [mvl-boston/openpilot](https://github.com/mvl-boston/openpilot) | through the branch switcher |
 
 The matching car code lives in [prehkopf/opendbc](https://github.com/prehkopf/opendbc) on branches of the same names.
+
+## Releases
+
+Each release is named after a place in Georgia, A to Z, and versioned by its release date (`YYYY.MM.DD`, with `.2`, `.3` for later releases the same day). The comma shows the name on the home screen and startup banner, for example "Buckhead • 5c3aa0d", and shows a short "what's new" card after an update.
+
+### Buckhead (2026.10.18.2): on `ody-test`
+
+- **Turn vs lane change.** With the blinker on, braking in the last 2 seconds means a turn, not a lane change, so turning the wheel no longer starts a lane change. On replays of my drives, lane changes started at intersections dropped from 19 to 9, and all 12 real lane changes still worked.
+- **Status pills** on the comma four: following gap to the car ahead (seconds while moving, feet when stopped), the van load setting, and why Dynamic Experimental Control switched to Experimental (`STOP AHEAD`, `SLOWING`, `CURVE`, `STOPPED`, `COLLISION`).
+- **Steering-wheel bookmark.** Double-tap CANCEL to save a bookmark with a chime, so the moment is easy to find in the logs later without reaching for the screen.
+- **Dim at night.** An onroad screen option that follows the light down to 10% brightness.
+- **Settings profile.** My chosen settings are re-applied after a reinstall or a sunnylink restore (alpha longitudinal, DEC, personality, MADS, screen, updates on).
+- **"What's new" card** after an update.
+- **Branch switcher: pick the fork, then the branch** (RehkopfPilot, MVL, brikowski, sunnypilot, comma). It only offers branches that exist, and warns before a one-way switch to another fork.
+- **Pre-push checklist** (`tools/ody/prepush.sh`) run before every release.
+- **Bug fixes & improvements.** sunnylink settings sync no longer drops a text setting the web app sends unencoded.
+
+### Atlanta (2026.10.17): on `ody-next`
+
+- **Status pills** on the comma four: `OP LONG` / `STOCK ACC` and `EXP` / `DEC•EXP` / `DEC•ACC`.
+- **Dynamic Experimental Control toggle** on the comma four.
+- Release codenames and release-date versions.
+- **Model runtime fix.** tinygrad is pinned to a version that contains comma's pin, so driver monitoring and the driving model load on the device. Without it, setup stuck on "looking for driver".
+- RehkopfPilot branding: home screen, boot logo, startup banner and screensaver.
+
+## Roadmap
+
+These are plans in rough order, not promises. Anything that changes how the van drives waits for enough drive data to tune it and to check the result.
+
+- **Chattahoochee**
+  - Quicker launches from a stop. Today the van delivers about 60% of the requested acceleration in the first 3 seconds.
+  - Smarter DEC on the highway: stay in ACC above about 55 mph unless the model sees a stop.
+- **Dahlonega**
+  - Uphill compensation. Holds and gentle slowdowns run about 0.2 m/s² short on grades over 1°.
+  - Learned behavior kept between drives, stored separately for each van load.
+  - Van load that suggests itself from how the van accelerates.
+- **Later**
+  - A "Georgia traffic" personality: shorter gap at speed, quicker catch-up, earlier resume.
+  - Gentler braking and a longer gap when the wipers are on.
+- **Investigating**
+  - An emergency-braking layer to partly make up for the stock collision braking that openpilot longitudinal turns off. `ody-test` only, with safety tests.
+  - Slowing for exit ramps from map data, on off-ramps only.
+  - Handling remote start cleanly.
 
 ## What's in `ody-next`
 
@@ -46,12 +89,12 @@ Odyssey-specific details:
 - **Actuator delay is 0.5 s** on the Odyssey. brikowski's controller is tuned at 0.5 s. MVL uses 0.25 s for Bosch, but a fit of my own drives also puts the van at 0.5 s.
 - **Steering.** STEER_MAX is 3840 with delta 2. Platform flags are `BOSCH_ALT_BRAKE | BOSCH_ALT_RADAR` (safetyParam 259).
 - **Experimental mode.** Gas taps add a small, temporary acceleration boost (comma's AccelBoost). This works with Dynamic Experimental Control.
-- **comma four screen.** An "onroad screen" picker on the Device page: always on, 15 s or 3 min.
+- **comma four screen.** An "onroad screen" picker on the Device page: always on, 15 s or 3 min (Buckhead adds dim at night).
 - **Kept from comma:** the block on openpilot sending AEB. Stock emergency braking is not available with openpilot longitudinal on Bosch Hondas. openpilot's forward collision warning and hard braking still work.
 
 ## Testing
 
-Every change passes opendbc's full suite (panda safety, MISRA, about 10,300 car tests) and a full PC build. It also gets process replay against a sunnypilot base and replay on my own Odyssey drives, before it goes in the van. The methods and scripts are in [`tools/ody/`](tools/ody/README.md).
+Every release passes the pre-push checklist (`tools/ody/prepush.sh`): a full PC build, the driving and driver-monitoring models loaded and run on the PC, code scans, the openpilot and sunnypilot unit and UI tests, the Honda car and safety tests, and a replay of a recorded Odyssey drive. Changes to car code also pass opendbc's full suite (panda safety, MISRA, about 10,300 car tests) and process replay against a sunnypilot base. Driving changes are replayed against my own Odyssey drives before they go in the van. The methods and scripts are in [`tools/ody/`](tools/ody/README.md).
 
 ## ⚠️ Read this first
 
