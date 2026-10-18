@@ -71,6 +71,7 @@ struct SelfdriveStateSP @0x81c2f05a394cf4af {
   intelligentCruiseButtonManagement @1 :IntelligentCruiseButtonManagement;
   buttonsPressed @2 :UInt16;
   buttonsReleaseToggle @3 :UInt16;
+  wheelBookmarkCount @4 :UInt32;  # RehkopfPilot: double-taps of CANCEL this drive (UI publishes the bookmark)
 
   enum AudibleAlert {
     none @0;

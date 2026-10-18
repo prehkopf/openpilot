@@ -21,6 +21,7 @@ from openpilot.selfdrive.locationd.helpers import PoseCalibrator, Pose
 from openpilot.selfdrive.selfdrived.events import Events, ET
 from openpilot.selfdrive.selfdrived.helpers import ExcessiveActuationCheck
 from openpilot.selfdrive.selfdrived.state import StateMachine
+from openpilot.selfdrive.selfdrived.wheel_bookmark import WheelBookmark
 from openpilot.selfdrive.selfdrived.alertmanager import AlertManager, set_offroad_alert
 
 from openpilot.common.version import get_build_metadata
@@ -184,6 +185,7 @@ class SelfdriveD(CruiseHelper):
 
     CruiseHelper.__init__(self, self.CP)
     self.button_state_tracker = ButtonStateTracker()
+    self.wheel_bookmark = WheelBookmark()
 
   def update_events(self, CS):
     """Compute onroadEvents from carState"""
@@ -639,6 +641,7 @@ class SelfdriveD(CruiseHelper):
     icbm.vTarget = self.icbm.v_target
 
     self.button_state_tracker.publish(ss_sp)
+    ss_sp.wheelBookmarkCount = self.wheel_bookmark.count
 
     self.pm.send('selfdriveStateSP', ss_sp_msg)
 
@@ -660,6 +663,7 @@ class SelfdriveD(CruiseHelper):
     self.update_alerts(CS)
 
     self.button_state_tracker.update(CS)
+    self.wheel_bookmark.update(CS.buttonEvents, self.sm.frame * DT_CTRL)
     self.publish_selfdriveState(CS)
 
     self.CS_prev = CS

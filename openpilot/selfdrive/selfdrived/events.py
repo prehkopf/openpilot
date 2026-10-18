@@ -2,7 +2,7 @@
 import math
 import os
 
-from openpilot.cereal import log
+from openpilot.cereal import custom, log
 from opendbc.car.structs import car
 import openpilot.cereal.messaging as messaging
 from openpilot.common.constants import CV
@@ -21,6 +21,7 @@ AlertSize = log.SelfdriveState.AlertSize
 AlertStatus = log.SelfdriveState.AlertStatus
 VisualAlert = car.CarControl.HUDControl.VisualAlert
 AudibleAlert = log.SelfdriveState.AudibleAlert
+AudibleAlertSP = custom.SelfdriveStateSP.AudibleAlert
 EventName = log.OnroadEvent.EventName
 
 
@@ -832,12 +833,15 @@ EVENTS: dict[int, dict[str, Alert | AlertCallbackType]] = {
     ET.WARNING: personality_changed_alert,
   },
 
+  # RehkopfPilot: chime so a steering-wheel bookmark (double-tap CANCEL) is confirmed by ear
   EventName.userBookmark: {
-    ET.PERMANENT: NormalPermanentAlert("Bookmark Saved", duration=1.5),
+    ET.PERMANENT: Alert("Bookmark Saved", "", AlertStatus.normal, AlertSize.small,
+                        Priority.LOWER, VisualAlert.none, AudibleAlertSP.promptSingleHigh, 1.5),
   },
 
   EventName.userBookmarkNotPaired: {
-    ET.PERMANENT: NormalPermanentAlert("Bookmark Saved", "pair to connect\nto view", duration=1.5),
+    ET.PERMANENT: Alert("Bookmark Saved", "pair to connect\nto view", AlertStatus.normal, AlertSize.mid,
+                        Priority.LOWER, VisualAlert.none, AudibleAlertSP.promptSingleHigh, 1.5),
   },
 }
 
