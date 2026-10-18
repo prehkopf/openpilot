@@ -5,6 +5,7 @@ A change goes onto the comma only after every layer below passes. Then it gets a
 
 | Layer | Script | What it proves |
 |---|---|---|
+| 0. **Pre-push checklist** | `prepush.sh [--full]` | Runs everything below that fits in a few minutes, plus the checks the layers miss. Required before every push to `ody-next` / `ody-test` |
 | 1. opendbc suite | `opendbc_test.sh [branch]` | Panda safety C tests, MISRA, lint, and every car test, including `test_odyssey_port.py` |
 | 2. Full build | `build_pc.sh [branch]` | The whole tree compiles. Prints the Honda tuning it builds (delay, ki) |
 | 3. A/B replay | `replay_ab.sh [base]` | Replays comma's Honda test routes on a sunnypilot base and on this build. Every difference must trace to a deliberate change |
@@ -12,6 +13,23 @@ A change goes onto the comma only after every layer below passes. Then it gets a
 | 5. Van model + sims | `fit_plant.py`, opendbc `odyssey_load_sim.py` | Closed-loop check of gas changes against a van model fitted from real drives |
 | 6. Freshness | `freshness.sh` | How far behind comma, sunnypilot, MVL and brikowski this build is |
 | 7. Drive report | `drive_report/` | What actually happened on the road |
+
+## 0. Pre-push checklist
+
+```bash
+tools/ody/prepush.sh            # ~90 s: build, models on PC, scans, tests, Honda car + safety, own-drive replay, pins, release bump
+tools/ody/prepush.sh --full     # + opendbc's whole suite and the A/B replay
+```
+
+What it checks, and why:
+
+- **models:** loads and runs the stock driving model and driver monitoring through their real entry points (`checks/model_e2e.py`). No unit test starts these processes. In October 2026 a tinygrad pin that didn't match comma's model code crashed driver monitoring on the device and blocked onboarding. With that pin put back, this check fails.
+- **imports / params / services:** static scans (`checks/`) for imports of modules or names that no longer exist, params keys that aren't registered, and SubMaster/PubMaster services cereal doesn't know. Upstream merges break all three silently.
+- **pytest:** openpilot + sunnypilot unit and UI tests. Three locationd/calibrationd scenario tests are deselected because they assert comma's thresholds, which MVL widened on purpose for mount tolerance.
+- **honda_car / honda_safety:** opendbc's Honda car tests (including `test_odyssey_port.py`) and panda safety tests.
+- **replay:** card + controlsd from this build on a recorded Odyssey segment (`--rlogs DIR`, default `Documents\openpilot\rlogs`).
+- **pins (informational):** whether our tinygrad contains the pin comma master expects, and how msgq/rednose/panda compare.
+- **release bump (warning):** a push should carry the next codename in `BUILD_NAME` and today's date as the version.
 
 ## Setup (once)
 
