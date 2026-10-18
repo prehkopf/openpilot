@@ -8,6 +8,7 @@ import time
 from opendbc.car.structs import car
 from openpilot.common.test import OpenpilotTestCase
 from openpilot.common.params import Params
+from openpilot.common.settings_profile import load_profile
 import openpilot.system.manager.manager as manager
 from openpilot.system.manager.process import ensure_running
 from openpilot.system.manager.process_config import managed_processes, procs
@@ -43,7 +44,13 @@ class TestManager(OpenpilotTestCase):
 
     os.environ['PREPAREONLY'] = '1'
     manager.main()
+    # RehkopfPilot: settings_profile.json deliberately overrides some defaults on a fresh install
+    profile = (load_profile() or {}).get("params", {})
     for k in params.all_keys():
+      key = k.decode() if isinstance(k, bytes) else k
+      if key in profile:
+        assert params.get(k) == profile[key], key
+        continue
       default_value = params.get_default_value(k)
       if default_value is not None:
         assert params.get(k) == default_value

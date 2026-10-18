@@ -13,6 +13,7 @@ from enum import Enum
 from typing import Any
 
 from openpilot.common.git import get_branch
+from openpilot.common.settings_profile import apply_settings_profile
 from openpilot.common.params import Params, ParamKeyFlag
 from openpilot.common.realtime import Ratekeeper
 from openpilot.common.swaglog import cloudlog
@@ -211,6 +212,8 @@ class BackupManagerSP:
         cloudlog.info(f"Skipped restoring param {param}: not marked for backup in current version")
 
     cloudlog.info(f"Restore complete: {restored_count} params restored, {skipped_count} params skipped")
+    # a restored backup can carry settings from an older install (e.g. updates disabled); put the baseline back
+    apply_settings_profile(Params(), force=True)
 
   def _get_current_version(self) -> custom.BackupManagerSP.Version:
     """Gets current sunnypilot version information."""

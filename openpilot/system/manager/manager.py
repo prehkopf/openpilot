@@ -10,6 +10,7 @@ from openpilot.cereal import log
 import openpilot.cereal.messaging as messaging
 from openpilot.common.utils import atomic_write
 from openpilot.common.params import Params, ParamKeyFlag
+from openpilot.common.settings_profile import apply_settings_profile
 from openpilot.common.text_window import TextWindow
 from openpilot.common.hardware import HARDWARE, PC
 from openpilot.system.manager.helpers import unblock_stdout, save_bootlog
@@ -57,6 +58,9 @@ def manager_init() -> None:
     default_value = params.get_default_value(k)
     if default_value is not None and params.get(k) is None:
       params.put(k, default_value, block=True)
+
+  # RehkopfPilot baseline settings, once per profile version (so again after a reinstall)
+  apply_settings_profile(params)
 
   # Create folders needed for msgq
   try:
