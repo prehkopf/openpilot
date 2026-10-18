@@ -15,7 +15,8 @@ NOTES = """# notes
 
 
 def test_section_parsing(tmp_path):
-  p = tmp_path / "RELEASE_NOTES.md"; p.write_text(NOTES)
+  p = tmp_path / "RELEASE_NOTES.md"
+  p.write_text(NOTES)
   assert release_notes("Buckhead", str(p)) == ["one", "two"]
   assert release_notes("Atlanta", str(p)) == ["old"]
   assert release_notes("Nowhere", str(p)) == []
@@ -24,7 +25,8 @@ def test_section_parsing(tmp_path):
 
 
 def test_shown_once_per_codename(tmp_path):
-  p = tmp_path / "RELEASE_NOTES.md"; p.write_text(NOTES)
+  p = tmp_path / "RELEASE_NOTES.md"
+  p.write_text(NOTES)
   calls = []
   with OpenpilotPrefix():
     params = Params()

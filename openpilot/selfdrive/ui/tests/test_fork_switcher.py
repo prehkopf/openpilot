@@ -1,6 +1,5 @@
 """RehkopfPilot user-first branch switcher: pick the fork, then the branch; the updater follows the chosen fork."""
 import subprocess
-from types import SimpleNamespace
 
 from openpilot.selfdrive.ui.mici.layouts.settings.software import (FORKS, HOME_FORK, branch_options, fork_for_url, target_label,
                                                                    target_remote)
