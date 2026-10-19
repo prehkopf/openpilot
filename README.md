@@ -25,9 +25,11 @@ If this build is useful to you, the thanks go to them. If you have an Odyssey an
 
 | Branch | Status | Install URL |
 |---|---|---|
-| `ody-next` | My daily driver. Currently **Atlanta**. | `installer.comma.ai/prehkopf/ody-next` |
-| `ody-test` | The next release, on test drives before it moves to `ody-next`. Currently **Etowah**. Also has a **van load** setting (Empty / Family / Family + luggage) that adds gas for a heavier van; still being calibrated on loaded drives. | `installer.comma.ai/prehkopf/ody-test` |
+| `ody-next` | My daily driver. Currently **Etowah**, promoted 2026-10-19 after driving it. | `installer.comma.ai/prehkopf/ody-next` |
+| `ody-test` | The next release, on test drives before it moves to `ody-next`. Currently **Etowah**, the same as `ody-next`, until the next release. | `installer.comma.ai/prehkopf/ody-test` |
 | MVL's branches (`sp-honda-*`, …) | Unchanged mirrors of [mvl-boston/openpilot](https://github.com/mvl-boston/openpilot) | through the branch switcher |
+
+Both branches have a **van load** setting (Empty / Family / Family + luggage) that adds gas for a heavier van; it is still being calibrated on loaded drives.
 
 The matching car code lives in [prehkopf/opendbc](https://github.com/prehkopf/opendbc) on branches of the same names.
 
@@ -35,7 +37,7 @@ The matching car code lives in [prehkopf/opendbc](https://github.com/prehkopf/op
 
 Each release is named after a place in Georgia, A to Z, and versioned by its release date (`YYYY.MM.DD`, with `.2`, `.3` for later releases the same day). The comma shows the name on the home screen and startup banner, for example "Buckhead • 5c3aa0d", and shows a short "what's new" card after an update.
 
-### Etowah (2026.10.18.6): on `ody-test`
+### Etowah (2026.10.18.6): on `ody-next` and `ody-test`
 
 Dahlonega plus navigation without comma prime (navigation step 1).
 
@@ -97,7 +99,7 @@ A service pack: Buckhead plus fixes picked from upstream on 2026-10-18.
 - **Pre-push checklist** (`tools/ody/prepush.sh`) run before every release.
 - **Bug fixes & improvements.** sunnylink settings sync no longer drops a text setting the web app sends unencoded.
 
-### Atlanta (2026.10.17): on `ody-next`
+### Atlanta (2026.10.17)
 
 - **Status pills** on the comma four: `OP LONG` / `STOCK ACC` and `EXP` / `DEC•EXP` / `DEC•ACC`.
 - **Dynamic Experimental Control toggle** on the comma four.
@@ -154,7 +156,8 @@ The branch is built in this order:
 1. sunnypilot's October 2026 comma sync (comma openpilot 2026-10-07).
 2. MVL `sp-honda-dev-202608`.
 3. comma master 2026-10-11.
-4. brikowski's Odyssey controller and fixes, through his 2026-10-12 commits.
+4. brikowski's Odyssey controller and fixes, through his 2026-10-13 stable, plus his gas-headroom fix (6d4b34f8).
+5. The RehkopfPilot releases Atlanta through Etowah (see [Releases](#releases)), including cherry-picks from comma and sunnypilot listed there.
 
 Odyssey-specific details:
 
@@ -162,7 +165,7 @@ Odyssey-specific details:
 - **Actuator delay is 0.5 s** on the Odyssey. brikowski's controller is tuned at 0.5 s. MVL uses 0.25 s for Bosch, but a fit of my own drives also puts the van at 0.5 s.
 - **Steering.** STEER_MAX is 3840 with delta 2, behind brikowski's steering-authority gate (normally 2560); see [Steering limits](#steering-limits-odyssey). Platform flags are `BOSCH_ALT_BRAKE | BOSCH_ALT_RADAR` (safetyParam 259).
 - **Experimental mode.** Gas taps add a small, temporary acceleration boost (comma's AccelBoost). This works with Dynamic Experimental Control.
-- **comma four screen.** An "onroad screen" picker on the Device page: always on, 15 s or 3 min (Buckhead adds dim at night).
+- **comma four screen.** An "onroad screen" picker in settings → screen & alerts: always on, 15 s or 3 min, and dim at night.
 - **Kept from comma:** the block on openpilot sending AEB. Stock emergency braking is not available with openpilot longitudinal on Bosch Hondas. openpilot's forward collision warning and hard braking still work.
 
 ## Steering limits (Odyssey)
