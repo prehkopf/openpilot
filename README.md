@@ -26,7 +26,7 @@ If this build is useful to you, the thanks go to them. If you have an Odyssey an
 | Branch | Status | Install URL |
 |---|---|---|
 | `ody-next` | My daily driver. Currently **Atlanta**. | `installer.comma.ai/prehkopf/ody-next` |
-| `ody-test` | The next release, on test drives before it moves to `ody-next`. Currently **Dahlonega**. Also has a **van load** setting (Empty / Family / Family + luggage) that adds gas for a heavier van; still being calibrated on loaded drives. | `installer.comma.ai/prehkopf/ody-test` |
+| `ody-test` | The next release, on test drives before it moves to `ody-next`. Currently **Etowah**. Also has a **van load** setting (Empty / Family / Family + luggage) that adds gas for a heavier van; still being calibrated on loaded drives. | `installer.comma.ai/prehkopf/ody-test` |
 | MVL's branches (`sp-honda-*`, …) | Unchanged mirrors of [mvl-boston/openpilot](https://github.com/mvl-boston/openpilot) | through the branch switcher |
 
 The matching car code lives in [prehkopf/opendbc](https://github.com/prehkopf/opendbc) on branches of the same names.
@@ -35,7 +35,22 @@ The matching car code lives in [prehkopf/opendbc](https://github.com/prehkopf/op
 
 Each release is named after a place in Georgia, A to Z, and versioned by its release date (`YYYY.MM.DD`, with `.2`, `.3` for later releases the same day). The comma shows the name on the home screen and startup banner, for example "Buckhead • 5c3aa0d", and shows a short "what's new" card after an update.
 
-### Dahlonega (2026.10.18.5): on `ody-test`
+### Etowah (2026.10.18.6): on `ody-test`
+
+Dahlonega plus navigation without comma prime (navigation step 1).
+
+- **comma's navigation works without prime.** comma brought back navigation as "nav alpha" on 2026-10-11 (#39066), but without prime comma's servers refuse both routes and map tiles (403). This build gets them elsewhere:
+  - **Routes** come from your own free Mapbox token (100,000 requests a month free), kept on the comma and never backed up.
+  - **The map** comes from an offline OpenStreetMap file on the comma (the Protomaps basemap; Georgia is 848 MB), so it works without internet.
+  - The comma four shows the next turn, the distance to it, a small map, and the ETA.
+- **Destination picker** in settings → driving, second after van load. It lists your saved places, which are stored only on the comma. Picking one starts the route and turns navigation on, and the route clears when the car turns off. It's meant for openpilot's route awareness; keep the phone for traffic rerouting.
+- **Privacy fixes in comma's navd:**
+  - A failed route request no longer logs the request URL, which contained the access token.
+  - Route logs no longer include coordinates. Logs upload to comma.
+- **Bug fix:** map tiles crashed on sunnypilot's API helper (no `dongle_id`).
+- Setup on the comma (token, places, map file) is a one-time script, `qa/nav_setup.sh` in my notes. Nothing personal is in this repo.
+
+### Dahlonega (2026.10.18.5)
 
 Chattahoochee plus a quicker launch from a stop.
 
@@ -95,12 +110,13 @@ A service pack: Buckhead plus fixes picked from upstream on 2026-10-18.
 These are plans in rough order, not promises. Anything that changes how the van drives waits for enough drive data to tune it and to check the result. Last updated 2026-10-18.
 
 **Next releases**
-- **Etowah**
+- **Fayette**
   - Uphill compensation. Holds and gentle slowdowns run about 0.2 m/s² short on grades over 1°.
   - Smarter DEC on the highway: stay in ACC above about 55 mph unless the model sees a stop. Needs some highway time with DEC on first.
   - Tune the green-light launch from real launches. Dahlonega asks for up to 1.5 m/s²; lower it if it feels abrupt.
   - The comma stays awake 1 hour after a drive instead of 30 hours, to spare the van battery.
-- **Fayette**
+- **Gwinnett**
+  - Exit slowdown (navigation step 2): slow only for the off-ramp you're taking, never for on-ramps, and not before the ramp splits from the highway. The signal is the comma's route when you're on it, and otherwise your right blinker plus the ramp in the offline map. That way it works when you follow Google Maps instead.
   - Learned behavior kept between drives, stored separately for each van load.
   - Van load that suggests itself from how the van accelerates, offered as a pill rather than switched silently.
 
