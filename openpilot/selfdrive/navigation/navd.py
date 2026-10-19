@@ -50,7 +50,9 @@ class RouteEngine:
     self.recompute_hold = 0
     self.reroute_counter = 0
 
-    self.mapbox_token = os.environ.get("MAPBOX_TOKEN")
+    # RehkopfPilot: a personal Mapbox token (param MapboxToken, never backed up) routes without comma prime,
+    # whose nav proxy answers 403 for non-prime devices
+    self.mapbox_token = os.environ.get("MAPBOX_TOKEN") or self.params.get("MapboxToken") or None
     self.api = Api(self.params.get("DongleId")) if self.mapbox_token is None else None
     self.mapbox_host = "https://api.mapbox.com" if self.mapbox_token is not None else API_HOST.rstrip('/') + '/v1/nav'
 
@@ -94,7 +96,7 @@ class RouteEngine:
 
   def calculate_route(self, destination):
     assert self.last_position is not None
-    cloudlog.warning(f"Calculating route {self.last_position} -> {destination}")
+    cloudlog.warning("Calculating route")  # no coordinates: logs upload, and these are home and family places
     self.nav_destination = destination
 
     lang = self.params.get('LanguageSetting')
@@ -122,7 +124,7 @@ class RouteEngine:
     try:
       resp = requests.get(url, params=params, timeout=10)
       if resp.status_code != 200:
-        cloudlog.event("API request failed", status_code=resp.status_code, text=resp.text, error=True)
+        cloudlog.event("API request failed", status_code=resp.status_code, text=resp.text[:200], error=True)
       resp.raise_for_status()
 
       r = resp.json()
@@ -134,8 +136,10 @@ class RouteEngine:
         cloudlog.warning("Got empty route response")
         self.clear_route()
 
-    except requests.exceptions.RequestException:
-      cloudlog.exception("failed to get route")
+    except requests.exceptions.RequestException as e:
+      # requests exceptions carry the URL, and the URL carries the access token; log only the kind of failure
+      status = getattr(getattr(e, 'response', None), 'status_code', None)
+      cloudlog.warning(f"failed to get route: {type(e).__name__}" + (f" {status}" if status else ""))
       self.clear_route()
 
   def send_instruction(self):

@@ -1,4 +1,5 @@
-"""Byte ranges of the hosted PMTiles basemap, cached on disk."""
+"""Byte ranges of the PMTiles basemap: a local file on the device when there is one, else the hosted archive cached on disk."""
+import os
 import re
 import time
 from pathlib import Path
@@ -13,14 +14,48 @@ from openpilot.selfdrive.navigation.pmtiles import HEADER_LENGTH
 
 CACHE_LIMIT = 64 * 1024 * 1024
 MERGE_GAP = 256 * 1024  # tiles this close together in the archive are fetched in one range request
+def nav_root() -> Path:
+  return Path(Paths.comma_home() if PC else '/data') / 'navigation'
+
+
+def local_map() -> Path:
+  """RehkopfPilot: an offline Protomaps extract (for example Georgia, from build.protomaps.com via `pmtiles extract`).
+  Without prime the hosted archive answers 403, and offline the map keeps working without internet."""
+  return nav_root() / 'map.pmtiles'
+
+
+class LocalTiles:
+  """A PMTiles archive on local disk: same interface as RemoteTiles, no network."""
+  def __init__(self, path: Path | None = None):
+    self.fd = os.open(path or local_map(), os.O_RDONLY)
+    self.size = os.fstat(self.fd).st_size
+
+  def read(self, offset: int, length: int) -> bytes:
+    return os.pread(self.fd, length, offset)
+
+  def prefetch(self, ranges):
+    pass  # already on disk
+
+  def close(self):
+    if self.fd >= 0:
+      os.close(self.fd)
+      self.fd = -1
+
+
+def open_tiles(path: Path | None = None):
+  """The local map when the device has one, else the hosted archive."""
+  path = path or local_map()
+  return LocalTiles(path) if path.is_file() else RemoteTiles()
 
 
 class RemoteTiles:
   def __init__(self):
-    self.cache = Path(Paths.comma_home() if PC else '/data') / 'navigation' / 'tiles'
+    self.cache = nav_root() / 'tiles'
     self.cache.mkdir(parents=True, exist_ok=True, mode=0o700)
     self.session = requests.Session()
-    self.api = Api(Params().get('DongleId'))
+    # sunnypilot's Api has no dongle_id attribute (comma's does), so keep the id here for the tiles URL
+    self.dongle_id = Params().get('DongleId')
+    self.api = Api(self.dongle_id)
     self.url = ''
     self.expires = 0
     self.etag = None
@@ -40,7 +75,7 @@ class RemoteTiles:
   def _fetch(self, offset: int, length: int) -> bytes:
     try:
       if time.time() >= self.expires - 60:  # noqa: TID251 - SAS expiry is a Unix timestamp
-        response = self.api.get(f'v1/{self.api.dongle_id}/nav/tiles', access_token=self.api.get_token(), timeout=10)
+        response = self.api.get(f'v1/{self.dongle_id}/nav/tiles', access_token=self.api.get_token(), timeout=10)
         response.raise_for_status()
         metadata = response.json()
         self.url, self.expires = metadata['url'], metadata['expires']

@@ -7,6 +7,7 @@ See the LICENSE.md file in the root directory for more details.
 from openpilot.cereal import log
 from openpilot.selfdrive.ui.layouts.settings.common import restart_needed_callback
 from openpilot.selfdrive.ui.mici.widgets.button import BigButton, BigMultiParamToggle, BigParamControl
+from openpilot.selfdrive.ui.sunnypilot.mici.widgets.destination import DestinationToggle
 from openpilot.selfdrive.ui.sunnypilot.mici.widgets.lane_change_mode import LaneChangeModeToggle
 from openpilot.selfdrive.ui.sunnypilot.mici.widgets.load_preset import LoadPresetToggle
 from openpilot.selfdrive.ui.sunnypilot.mici.widgets.onroad_screen import OnroadScreenToggle
@@ -72,6 +73,7 @@ class DrivingGroup(GroupLayout):
                                             "Normal ACC following by default; the model takes over\n" +
                                             "for stops, lights and curves. The DEC pill shows why.")
     self._load = LoadPresetToggle()
+    self._destination = DestinationToggle()
     self._mads = DefaultParamControl("MADS steering", "Mads",
                                  description="Steering stays on when cruise is off or you brake,\n" +
                                              "and the LKAS button turns steering on by itself.\n" +
@@ -80,8 +82,9 @@ class DrivingGroup(GroupLayout):
     self._enable = BigParamControl("enable RehkopfPilot", "OpenpilotEnabledToggle", toggle_callback=restart_needed_callback,
                                    description="Enable to use RehkopfPilot driver assistance.\n" +
                                                "Disable to use your car's stock driver assistance.")
-    # most-changed first: load changes with every trip, MADS and enable only with the car off
-    super().__init__([self._load, self._personality, self._dec, self._lane_change, self._experimental, self._mads, self._enable])
+    # most-changed first: load and destination change with every trip, MADS and enable only with the car off
+    super().__init__([self._load, self._destination, self._personality, self._dec, self._lane_change, self._experimental,
+                      self._mads, self._enable])
 
     self._mads.set_enabled(lambda: not ui_state.started)
     self._enable.set_enabled(lambda: not ui_state.engaged)
