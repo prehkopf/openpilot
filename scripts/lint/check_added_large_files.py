@@ -4,6 +4,12 @@ import math
 import os
 import subprocess
 
+# stored in git, not LFS: sunnypilot's LFS store lacks them (see .gitattributes)
+ALLOWED = {
+  "openpilot/selfdrive/modeld/models/big_driving_warp_1344x760_tinygrad.pkl",
+  "openpilot/selfdrive/modeld/models/big_driving_warp_1928x1208_tinygrad.pkl",
+}
+
 
 def lfs_files(filenames: list[str]) -> set[str]:
   if not filenames:
@@ -22,7 +28,7 @@ def lfs_files(filenames: list[str]) -> set[str]:
 
 def check_added_large_files(filenames: list[str], max_kb: int) -> int:
   failed = False
-  ignored = lfs_files(filenames)
+  ignored = lfs_files(filenames) | ALLOWED
   for filename in filenames:
     if filename in ignored:
       continue

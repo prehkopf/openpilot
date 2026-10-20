@@ -45,6 +45,8 @@ step imports python -I "$CHECKS/importscan.py" "$ROOT"
 step params python -I "$CHECKS/paramscan.py" "$ROOT"
 step services python "$CHECKS/svcscan.py" "$ROOT"
 step lint ruff check openpilot/selfdrive openpilot/sunnypilot openpilot/system openpilot/common tools/ody
+#    the device installer pulls LFS from .lfsconfig's host only; comma-merged objects can be missing there
+step lfs_host python -I "$CHECKS/lfs_host.py" "$ROOT"
 
 # 4. tests: openpilot + sunnypilot unit/UI tests, Honda car and safety tests
 #    locationd/calibrationd scenario tests assert comma's thresholds; MVL widened them on purpose (mount tolerance)
