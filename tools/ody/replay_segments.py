@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-# Replay card + controlsd from this checkout on recorded Odyssey segments and sanity-check the outputs.
+# Replay card + controlsd + plannerd from this checkout on recorded Odyssey segments and sanity-check the outputs.
+# Exits non-zero if any process crashes.
 # usage: replay_segments.py <segment dir or rlog.zst> [...]
 #   e.g. replay_segments.py ~/rlogs/00000008--83edc4fea4--10
 import os
@@ -16,16 +17,19 @@ def rlog_path(arg):
 def main(args):
   if not args:
     sys.exit("usage: replay_segments.py <segment dir or rlog.zst> [...]")
+  crashed = []
   for seg in args:
     lr = list(LogReader(rlog_path(seg)))
     rec_cs = [m.carState for m in lr if m.which() == "carState"]
     rec_cc = [m.carControl for m in lr if m.which() == "carControl"]
+    rec_plan = [m.longitudinalPlan for m in lr if m.which() == "longitudinalPlan"]
     print(f"===== {seg}: {len(lr)} msgs, recorded carState {len(rec_cs)} =====")
-    for proc in ("card", "controlsd"):
+    for proc in ("card", "controlsd", "plannerd"):
       try:
         out = replay_process_with_name(proc, lr, disable_progress=True)
       except Exception as e:
         print(f"  {proc}: CRASH {type(e).__name__}: {str(e)[:300]}")
+        crashed.append(f"{os.path.basename(seg)}:{proc}")
         continue
       kinds = {}
       for m in out:
@@ -45,6 +49,14 @@ def main(args):
               f"(recorded {min(c.vEgo for c in rec_cs):.1f}..{max(c.vEgo for c in rec_cs):.1f})")
         sendcan = [m for m in out if m.which() == "sendcan"]
         print(f"    sendcan frames with msgs: {sum(1 for m in sendcan if len(m.sendcan))}/{len(sendcan)}")
+      elif proc == "plannerd":
+        # the planner is not covered by card/controlsd: a planner change only shows up here and in drive_report/planner_ab.py
+        plan = [m.longitudinalPlan for m in out if m.which() == "longitudinalPlan"]
+        if plan and rec_plan:
+          n = min(len(plan), len(rec_plan))
+          a = np.array([p.aTarget for p in plan[:n]])
+          da = a - np.array([p.aTarget for p in rec_plan[:n]])
+          print(f"    aTarget range {a.min():.2f}..{a.max():.2f}; mean |aTarget - recorded| {np.abs(da).mean():.3f}")
       else:
         cc = [m.carControl for m in out if m.which() == "carControl"]
         if cc:
@@ -55,6 +67,11 @@ def main(args):
           print(f"    enabled {sum(c.enabled for c in cc)}/{len(cc)}; accel range {acc.min():.2f}..{acc.max():.2f} " +
                 f"(recorded {rec_acc.min():.2f}..{rec_acc.max():.2f}); mean |accel - recorded| {np.abs(acc[:n] - rec_acc[:n]).mean():.3f}; " +
                 f"torque range {tq.min():.2f}..{tq.max():.2f}")
+
+
+  if crashed:
+    print(f"CRASHED: {', '.join(crashed)}")
+    sys.exit(1)
 
 
 if __name__ == "__main__":

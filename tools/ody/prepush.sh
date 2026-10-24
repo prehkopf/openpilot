@@ -2,7 +2,8 @@
 # Pre-push checklist for RehkopfPilot releases. Run from a PC build of this fork (WSL / Ubuntu 24.04).
 # usage: tools/ody/prepush.sh [--full] [--target ody-next|ody-test] [--rlogs DIR]
 #   default (~4 min): build, models on PC, code scans, unit/UI tests, Honda car + safety tests,
-#                     replay of a recorded Odyssey segment, submodule pins, release bump
+#                     replay of a recorded Odyssey segment (card, controlsd, plannerd), recorded turns vs lane
+#                     changes, submodule pins, release bump
 #   --full          : also opendbc's whole suite (tools/ody/opendbc_test.sh) and the A/B replay
 # Exits non-zero if any required check fails. Warnings never fail the run.
 set -uo pipefail
@@ -76,6 +77,9 @@ step honda_safety env PYTHONPATH="$ROOT/opendbc_repo:$ROOT" python -m pytest -q 
 # 5. card + controlsd from this build on a recorded Odyssey drive (newest pulled segment with openpilot long)
 SEG=$(ls -d "$RLOGS"/*--*--* 2>/dev/null | sort -V | tail -40 | head -1)
 if [ -n "$SEG" ]; then step replay python tools/ody/replay_segments.py "$SEG"; else warn "no rlogs at $RLOGS, skipped own-drive replay"; fi
+#    this build's DesireHelper over recorded turns and lane changes: no more lane changes started in real turns, and
+#    no fewer real lane changes, than the build that drove them (a turn on the gas once started a lane change)
+if [ -n "$SEG" ]; then step turn_lane_change python "$CHECKS/turn_lane_change.py" "$RLOGS"; fi
 
 # 6. submodule pins: does our tinygrad contain the pin comma's current master expects? (informational)
 python "$CHECKS/pin_check.py" > "$LOG/pins.log" 2>&1; sed 's/^/        /' "$LOG/pins.log"

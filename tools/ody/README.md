@@ -30,7 +30,8 @@ What it checks, and why:
 - **settings_ui:** builds the comma four settings home and every settings group offscreen and renders each onto one wide canvas (`checks/settings_render.py`, PNGs in the prepush log dir). Unit tests never build these pages.
 - **honda_car / honda_safety:** opendbc's Honda car tests (including `test_odyssey_port.py`) and panda safety tests.
 - **honda_car_parallel:** the same car tests split across workers. The Odyssey `get_params` sets class-level `CarControllerParams` values, so a test can pass serially only because an earlier test built Odyssey params in the same process. A downhill test did exactly that from Atlanta through Buckhead.
-- **replay:** card + controlsd from this build on a recorded Odyssey segment (`--rlogs DIR`, default `Documents\openpilot\rlogs`).
+- **replay:** card + controlsd + plannerd from this build on a recorded Odyssey segment (`--rlogs DIR`, default `Documents\openpilot\rlogs`). Fails if any of them crashes. (Before Fayette it printed CRASH and still passed.)
+- **turn_lane_change:** replays this build's DesireHelper over the 3 newest long recorded drives (`checks/turn_lane_change.py`). Blinker episodes are labelled from what the van did (heading swing over 20 s). Fails if this build starts a lane change in more real turns than the build that drove them, or in fewer than 90% of the real lane changes. Recorded `navInstruction` is fed in when the drive was on a route.
 - **pins (informational):** whether our tinygrad contains the pin comma master expects, and how msgq/rednose/panda compare.
 - **release_audit:** compares with the published branch (`checks/release_audit.py`). Fails if a params key changed type, and lists every reader of that key. Fails on any commit authored as `root` in openpilot or in the opendbc pin range. Warns about params keys added or removed.
 - **release bump (warning):** a push should carry the next codename in `BUILD_NAME` and today's date as the version.
@@ -85,7 +86,15 @@ This builds the base in `~/spbase`, records its outputs on comma's Honda test ro
 python tools/ody/replay_segments.py ~/rlogs/00000008--83edc4fea4--10
 ```
 
-This runs card and controlsd from this build on a recorded segment. It checks for crashes, valid messages, the fingerprint, the safety param (`hondaBosch` 259), sendcan output, and accel compared with what the car actually ran.
+This runs card, controlsd and plannerd from this build on a recorded segment. It checks for crashes, valid messages, the fingerprint, the safety param (`hondaBosch` 259), sendcan output, accel compared with what the car actually ran, and the planner's aTarget compared with the logged plan. It exits non-zero on any crash.
+
+For a planner change, compare it with itself switched off on the same segments:
+
+```bash
+python tools/ody/drive_report/planner_ab.py ~/rlogs/<route>--60 ~/rlogs/<route>--61   # highway following on vs off
+```
+
+The two replays share every input, so any difference is the change itself. Comparing one replay with the logged plan mixes in replay drift (around 0.06 m/s² mean even with unchanged code).
 
 **Known quirk:** the replay harness drops a random number of card frames each run (3 to 725 seen, on any branch). Compare values, not message counts.
 
@@ -125,13 +134,16 @@ python tools/ody/drive_report/uphill.py /tmp/r8.json [...]  # shortfall against 
 python tools/ody/drive_report/steer_cap_report.py ~/rlogs/<route> [...]     # time at the 2560 steering limit / opened to 3840, by speed band
 python tools/ody/drive_report/stop_launch_report.py ~/rlogs/<route> [...]  # Brake Hold, op-long stops and launches
 python tools/ody/drive_report/launch_eval.py ~/rlogs/<route> [...]         # where the green-light launch fires and what is in front
+python tools/ody/drive_report/route_overview.py ~/rlogs/<route> [...]      # one line per route: build, start time, miles, lat/long share, how each engagement ended, alerts
+python tools/ody/drive_report/lane_change_check.py ~/rlogs/<route> [...]   # every lane change openpilot started: real lane change or a turn?
 ```
 
 What to look at after a drive:
 
 - **Long tracking rms.** brikowski ody-op routes ran 0.18 to 0.21.
 - **Uphill shortfall.**
-- **Steer saturation** and the share of time above 2560 steer counts.
+- **Steer saturation** and the share of time above 2560 steer counts. From Fayette the full 3840 is available at every speed, so time at 2560 should drop.
+- **Lane changes started in turns** (`lane_change_check.py`).
 - **Disengage causes.** Brake disengages should be driver choice.
 - **Panda TX blocks.** They're benign when they happen only at engage and disengage edges.
 
@@ -160,4 +172,8 @@ Add one line each time Q/A finds something new. Turn it into a prepush check whe
 - **Settings pages only exist once the UI builds them.** Unit tests didn't catch a crash on first render (a `ui_state` attribute that the UI main loop sets at startup). Covered by `settings_ui`. To review a layout, open the PNGs it writes; scrolled screenshots cut cards in half.
 - **Settings card labels fit about 9 characters per line next to the icon.** Longer first lines run into the icon; longer second lines get cut to "...". Check the `settings_ui` renders after renaming anything.
 - **The `replay` step re-runs card and controlsd, not the planner.** A planner change (like Dahlonega's green-light launch) gets no replay coverage; run it over recorded drives offline (`drive_report/launch_eval.py`) to see where it fires and what is in front.
+- **A turn taken on the gas can start a lane change.** Buckhead's rule needs braking; 4 of 34 lane changes on the 2026-10-23 drives started in a real turn at 45-67 mph with no brake. Fayette adds the navigation check; without a route it is still possible. Covered by `turn_lane_change`.
+- **`carState.vCruise` is km/h, not m/s.** A report multiplied it by the m/s-to-mph factor and showed a 74 mph set speed as 268.
+- **This openpilot has no `laneChangeFinishing`.** A lane change goes `laneChangeStarting` -> `off` when the model says it is done. Don't count "finished" by that state.
+- **A replay step that prints CRASH must also exit non-zero.** `replay_segments.py` didn't, so the prepush replay could never fail. Check that a new check can fail: break the thing on purpose once (the turn check fails with the brake rule switched off).
 - **Check upstream fixes against your own drives before porting.** Dahlonega dropped two of three candidates that way (stops were already gentle; Brake Hold never turned on). `drive_report/stop_launch_report.py` does that check.
