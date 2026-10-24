@@ -37,7 +37,7 @@ If this build is useful to you, the thanks go to them. If you have an Odyssey an
 | Branch | Status | Install URL |
 |---|---|---|
 | `ody-next` | My daily driver. Currently **Etowah**, promoted 2026-10-19 after driving it. | `installer.comma.ai/prehkopf/ody-next` |
-| `ody-test` | The next release, on test drives before it moves to `ody-next`. Currently **Fayette**. | `installer.comma.ai/prehkopf/ody-test` |
+| `ody-test` | The next release, on test drives before it moves to `ody-next`. Currently **Fayette SP1**. | `installer.comma.ai/prehkopf/ody-test` |
 | MVL's branches (`sp-honda-*`, …) | Unchanged mirrors of [mvl-boston/openpilot](https://github.com/mvl-boston/openpilot) | through the branch switcher |
 
 Both branches have a **van load** setting (Empty / Family / Family + luggage) that adds gas for a heavier van; it is still being calibrated on loaded drives.
@@ -48,7 +48,17 @@ The matching car code lives in [prehkopf/opendbc](https://github.com/prehkopf/op
 
 Each release is named after a place in Georgia, A to Z, and versioned by its release date (`YYYY.MM.DD`, with `.2`, `.3` for later releases the same day). The comma shows the name on the home screen and startup banner, for example "Buckhead • 5c3aa0d", and shows a short "what's new" card after an update.
 
-### Fayette (2026.10.24): on `ody-test`
+### Fayette SP1 (2026.10.24.2): on `ody-test`
+
+A service pack: Fayette plus sunnypilot's new model loader, picked from upstream on 2026-10-24.
+
+- **Models from the model store work again.** Since the 10-16 runtime fix (tinygrad pinned to 69fd4d34), every precompiled model in sunnypilot's v23 catalog, such as TSFDOM, crashed the driving model on load, and calibration stayed at 0%. Those models were built for sunnypilot's older tinygrad (fe5d3169). The default model was never affected, because it is compiled on the comma at install time with whatever tinygrad is pinned. Thanks to dilbertson for tracking it down.
+- **sunnypilot's new model loader** (sunnypilot #2050, #2053, #2071, #2072): catalog v25, models stored as plain GPU artifacts that don't depend on tinygrad's pickle format, a converter for upstream models, and a self-healing check. tinygrad moves to comma's current pin (02e69816, as sunnypilot's 92b742f7), from comma #39085.
+- **Model downloads show speed and time left**, using parallel byte ranges (sunnypilot #2051, #2052).
+- **From comma:** retry the big model load once (#39086), Mountain Dew v3 (#39087), and a higher GPU performance level for modeld (sunnypilot #2061). The big-model changes only matter with a chestnut eGPU.
+- **Bug fix:** sunnypilot's big-model hash test only worked when run from the repository root.
+
+### Fayette (2026.10.24)
 
 Etowah plus the first round from the October upstream survey and the 2026-10-23 drive review.
 
@@ -154,7 +164,7 @@ These are plans in rough order, not promises. Anything that changes how the van 
 - Gentler braking and a longer gap when the wipers are on (from the car's wiper signal, not an internet weather service).
 - Acceleration personality (Sport / Normal / Eco), from sunnypilot's draft #815 and StarPilot's acceleration profiles.
 - Lane change: a nudge can override the road-edge block, from sunnypilot #2049.
-- Update download progress with speed and time left (sunnypilot #2051/#2052). `ody-test` first, with tests, because a broken updater can strand the device.
+- Software update progress shown as a percentage, like model downloads since Fayette SP1. `ody-test` first, with tests, because a broken updater can strand the device.
 - Keep-left / keep-right at forks on a route (StarPilot).
 
 **Investigating**

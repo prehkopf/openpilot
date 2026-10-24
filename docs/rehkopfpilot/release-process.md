@@ -71,6 +71,7 @@ timeline
         : Dahlonega : green-light launch, MADS brake-pause fix
         : Etowah : navigation without prime, offline map
   10-24 : Fayette : full-range steering, nav-aware turns, StarPilot gap, sleep after 1 h
+        : Fayette SP1 : sunnypilot's new model loader, model store works again
 ```
 
 A release touches four places:

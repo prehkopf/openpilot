@@ -3,6 +3,12 @@
 One section per codename (see BUILD_NAME). The comma shows the current one as a card after an update. Keep each
 to 3-4 short lines (30 characters at most) so it fits the card.
 
+## Fayette SP1
+- Model store models work again
+- New sunnypilot model loader
+- Download speed and time left
+- Bug fixes & improvements
+
 ## Fayette
 - Full steering at every speed
 - Turns on a route stay turns
