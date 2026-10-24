@@ -1,3 +1,7 @@
+import time
+
+import numpy as np
+
 from openpilot.cereal import log, custom
 from openpilot.common.constants import CV
 from openpilot.common.realtime import DT_MDL
@@ -15,12 +19,41 @@ LANE_CHANGE_START_TIME = 0.5
 # Without this, steering into an intersection turn counts as the lane-change nudge in "nudge" mode.
 # Scored on four Odyssey drives: blocks 82% of intersection turns at steer-in, keeps 96% of lane changes.
 TURN_INTENT_BRAKE_WINDOW = 2.0  # s
+# RehkopfPilot: on a navigation route, a turn coming up on the blinker side is also a turn (idea from StarPilot's
+# desire_helper). It catches the turns taken on the gas, which the brake rule misses: 4 of 34 lane changes on the
+# 2026-10-23 drives started in a turn at 45-67 mph with no braking. "Slight" maneuvers (exits, forks) stay lane changes.
+NAV_TURN_MODIFIERS = {"left": True, "sharp left": True, "right": False, "sharp right": False}  # value: is left
+NAV_TURN_LEAD_TIME = 12.0  # s of travel before the maneuver
+NAV_TURN_BASE_DISTANCE = 15.0  # m
+NAV_TURN_MIN_DISTANCE = 30.0  # m
+NAV_TURN_MAX_DISTANCE = 250.0  # m
+NAV_INSTRUCTION_MAX_AGE = 2.5  # s; navd publishes at 1 Hz
 
 TURN_DESIRES = {
   TurnDirection.none: log.Desire.none,
   TurnDirection.turnLeft: log.Desire.turnLeft,
   TurnDirection.turnRight: log.Desire.turnRight,
 }
+
+def fresh_nav_instruction(sm):
+  """The latest navInstruction if navd sent a valid one recently, else None."""
+  if not sm.valid['navInstruction'] or time.monotonic() - sm.recv_time['navInstruction'] > NAV_INSTRUCTION_MAX_AGE:
+    return None
+  return sm['navInstruction']
+
+
+def nav_turn_on_blinker_side(carstate, nav_instruction) -> bool:
+  """A navigation turn matching the blinker is within ~12 s of travel."""
+  if nav_instruction is None or carstate.leftBlinker == carstate.rightBlinker:
+    return False
+  is_left = NAV_TURN_MODIFIERS.get(str(nav_instruction.maneuverModifier).strip().lower())
+  if is_left is None or is_left != carstate.leftBlinker:
+    return False
+  distance = float(nav_instruction.maneuverDistance)
+  reach = float(np.clip(NAV_TURN_BASE_DISTANCE + max(carstate.vEgo, 0.0) * NAV_TURN_LEAD_TIME,
+                        NAV_TURN_MIN_DISTANCE, NAV_TURN_MAX_DISTANCE))
+  return 0.0 <= distance <= reach
+
 
 class DesireHelper:
   def __init__(self):
@@ -39,14 +72,15 @@ class DesireHelper:
   def get_lane_change_direction(CS):
     return LaneChangeDirection.left if CS.leftBlinker else LaneChangeDirection.right
 
-  def update(self, carstate, lateral_active, lane_change_prob, left_edge_detected=False, right_edge_detected=False):
+  def update(self, carstate, lateral_active, lane_change_prob, left_edge_detected=False, right_edge_detected=False,
+             nav_instruction=None):
     self.alc.update_params()
     self.lane_turn_controller.update_params()
     v_ego = carstate.vEgo
     one_blinker = carstate.leftBlinker != carstate.rightBlinker
     below_lane_change_speed = v_ego < LANE_CHANGE_SPEED_MIN
     self.time_since_brake = 0.0 if carstate.brakePressed else min(self.time_since_brake + DT_MDL, TURN_INTENT_BRAKE_WINDOW)
-    turn_intent = self.time_since_brake < TURN_INTENT_BRAKE_WINDOW
+    turn_intent = self.time_since_brake < TURN_INTENT_BRAKE_WINDOW or nav_turn_on_blinker_side(carstate, nav_instruction)
     if not one_blinker:
       self.turn_intent_held = False
 
