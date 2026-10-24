@@ -51,10 +51,13 @@ class PillInputs:
   v_ego: float = 0.0              # m/s
   metric: bool = False
   load_preset: int = 0
+  factory: bool = False  # passive drive (factory mode or RehkopfPilot toggled off): the car is stock
 
 
 def pill_rows(p: PillInputs) -> list[list[tuple[str, rl.Color]]]:
   """Pills as rows, each row read left to right and drawn right-aligned. Pure, so it's testable without a UI."""
+  if p.factory:
+    return [[("FACTORY", WHITE)]]
   row1: list[tuple[str, rl.Color]] = []
   if p.load_preset in LOAD_PRESETS:
     row1.append((LOAD_PRESETS[p.load_preset], BLUE))
@@ -103,7 +106,8 @@ class StatusPills(Widget):
     CP = ui_state.CP
     self._read_load_preset()
     p = PillInputs(op_long=bool(CP.openpilotLongitudinalControl) if CP is not None else ui_state.has_longitudinal_control,
-                   metric=ui_state.is_metric, load_preset=self._load_preset)
+                   metric=ui_state.is_metric, load_preset=self._load_preset,
+                   factory=bool(CP.passive) if CP is not None else False)
     if sm.recv_frame['selfdriveState'] >= ui_state.started_frame:
       p.experimental = sm['selfdriveState'].experimentalMode
     if sm.recv_frame['longitudinalPlanSP'] >= ui_state.started_frame:

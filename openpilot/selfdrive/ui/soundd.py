@@ -42,6 +42,9 @@ sound_list_sp: dict[int, tuple[str, int | None, float]] = {
   # AudibleAlertSP, file name, play count (none for infinite)
   AudibleAlertSP.promptSingleLow: ("prompt_single_low.wav", 1, MAX_VOLUME),
   AudibleAlertSP.promptSingleHigh: ("prompt_single_high.wav", 1, MAX_VOLUME),
+  # RehkopfPilot factory mode voice clips (mono, 16-bit, 48 kHz; tools/ody/checks/sounds.py)
+  AudibleAlertSP.factoryModeOn: ("factory_mode_on.wav", 1, MAX_VOLUME),
+  AudibleAlertSP.factoryModeOff: ("factory_mode_off.wav", 1, MAX_VOLUME),
 }
 
 sound_list: dict[int, tuple[str, int | None, float]] = {

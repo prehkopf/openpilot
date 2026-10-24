@@ -22,6 +22,7 @@ from openpilot.selfdrive.selfdrived.events import Events, ET
 from openpilot.selfdrive.selfdrived.helpers import ExcessiveActuationCheck
 from openpilot.selfdrive.selfdrived.state import StateMachine
 from openpilot.selfdrive.selfdrived.wheel_bookmark import WheelBookmark
+from openpilot.selfdrive.selfdrived.factory_mode import FactoryModeSwitch, factory_mode_enabled, toggle_factory_mode
 from openpilot.selfdrive.selfdrived.alertmanager import AlertManager, set_offroad_alert
 
 from openpilot.common.version import get_build_metadata
@@ -169,14 +170,21 @@ class SelfdriveD(CruiseHelper):
     elif self.CP.secOcRequired and not self.CP.secOcKeyAvailable:
       self.startup_event = EventName.startupNoSecOcKey
 
+    # card read FactoryMode before writing CarParams, so this matches how this drive started
+    self.factory_drive = car_recognized and self.CP.passive and factory_mode_enabled(self.params)
+    if self.factory_drive:
+      self.startup_event = None
+
     if not car_recognized:
       self.events.add(EventName.carUnrecognized, static=True)
       set_offroad_alert("Offroad_CarUnrecognized", True)
-    elif self.CP.passive:
+    elif self.CP.passive and not self.factory_drive:
       self.events.add(EventName.dashcamMode, static=True)
 
     self.events_sp = EventsSP()
     self.events_sp_prev = []
+    if self.factory_drive:
+      self.events_sp.add(custom.OnroadEventSP.EventName.factoryModeActive, static=True)
 
     self.mads = ModularAssistiveDrivingSystem(self)
     self.icbm = IntelligentCruiseButtonManagement(self.CP, self.CP_SP)
@@ -186,6 +194,7 @@ class SelfdriveD(CruiseHelper):
     CruiseHelper.__init__(self, self.CP)
     self.button_state_tracker = ButtonStateTracker()
     self.wheel_bookmark = WheelBookmark()
+    self.factory_mode_switch = FactoryModeSwitch()
 
   def update_events(self, CS):
     """Compute onroadEvents from carState"""
@@ -242,6 +251,13 @@ class SelfdriveD(CruiseHelper):
       prime_type = self.params.get("PrimeType")
       paired = prime_type is not None and int(prime_type) >= 0
       self.events.add(EventName.userBookmark if paired else EventName.userBookmarkNotPaired)
+
+    # RehkopfPilot factory mode: hold CANCEL in Park; works in factory mode too, so it can be switched back
+    if self.CP.brand != 'mock' and self.factory_mode_switch.update(CS.buttonEvents, CS.gearShifter, CS.vEgo,
+                                                                   self.sm.frame * DT_CTRL):
+      enabled = toggle_factory_mode(self.params)
+      cloudlog.event("factory_mode.toggled", next_start=enabled)
+      self.events_sp.add(custom.OnroadEventSP.EventName.factoryModeOn if enabled else custom.OnroadEventSP.EventName.factoryModeOff)
 
     # Don't add any more events while in dashcam mode
     if self.CP.passive:

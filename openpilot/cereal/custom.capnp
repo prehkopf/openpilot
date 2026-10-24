@@ -113,6 +113,9 @@ struct SelfdriveStateSP @0x81c2f05a394cf4af {
 
     promptSingleLow @31;
     promptSingleHigh @32;
+
+    factoryModeOn @33;  # RehkopfPilot voice clips
+    factoryModeOff @34;
   }
 }
 
@@ -368,6 +371,9 @@ struct OnroadEventSP @0xda96579883444c35 {
     e2eChime @23;
     laneChangeRoadEdge @24;
     bigModelReady @25;
+    factoryModeOn @26;  # RehkopfPilot: switched to factory mode for the next start
+    factoryModeOff @27;  # RehkopfPilot: switched back to RehkopfPilot for the next start
+    factoryModeActive @28;  # RehkopfPilot: this drive is a stock car
   }
 }
 

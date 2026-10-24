@@ -84,6 +84,8 @@ if [ -n "$SEG" ]; then step replay python tools/ody/replay_segments.py "$SEG"; e
 #    this build's DesireHelper over recorded turns and lane changes: no more lane changes started in real turns, and
 #    no fewer real lane changes, than the build that drove them (a turn on the gas once started a lane change)
 if [ -n "$SEG" ]; then step turn_lane_change python "$CHECKS/turn_lane_change.py" "$RLOGS"; fi
+#    factory mode leaves the van stock: card passive, noOutput safety, nothing sent (no radar silence)
+if [ -n "$SEG" ]; then step factory_mode python "$CHECKS/factory_mode.py" "$SEG"; fi
 
 # 6. submodule pins: does our tinygrad contain the pin comma's current master expects? (informational)
 python "$CHECKS/pin_check.py" > "$LOG/pins.log" 2>&1; sed 's/^/        /' "$LOG/pins.log"

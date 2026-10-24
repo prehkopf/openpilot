@@ -260,4 +260,30 @@ EVENTS_SP: dict[int, dict[str, Alert | AlertCallbackType]] = {
       AlertStatus.normal, AlertSize.small,
       Priority.LOW, VisualAlert.none, AudibleAlert.prompt, 2.),
   },
+
+  # RehkopfPilot factory mode (selfdrive/selfdrived/factory_mode.py): the switch applies at the next start
+  EventNameSP.factoryModeOn: {
+    ET.PERMANENT: Alert(
+      "Factory Mode",
+      "starts next time you start the van",
+      AlertStatus.normal, AlertSize.mid,
+      Priority.LOWER, VisualAlert.none, AudibleAlertSP.factoryModeOn, 4.),
+  },
+
+  EventNameSP.factoryModeOff: {
+    ET.PERMANENT: Alert(
+      "RehkopfPilot Back On",
+      "starts next time you start the van",
+      AlertStatus.normal, AlertSize.mid,
+      Priority.LOWER, VisualAlert.none, AudibleAlertSP.factoryModeOff, 4.),
+  },
+
+  # replaces "Dashcam Mode" for the whole drive
+  EventNameSP.factoryModeActive: {
+    ET.PERMANENT: Alert(
+      "Factory Mode",
+      "",
+      AlertStatus.normal, AlertSize.small,
+      Priority.LOWEST, VisualAlert.none, AudibleAlert.none, 0.),
+  },
 }

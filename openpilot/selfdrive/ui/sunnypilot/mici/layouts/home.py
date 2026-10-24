@@ -5,6 +5,7 @@ This file is part of sunnypilot and is licensed under the MIT License.
 See the LICENSE.md file in the root directory for more details.
 """
 import math
+import time
 
 import pyray as rl
 
@@ -12,12 +13,25 @@ from openpilot.selfdrive.ui.mici.layouts.home import MiciHomeLayout
 from openpilot.selfdrive.ui.ui_state import ui_state, ChestnutState
 from openpilot.system.ui.lib.application import FontWeight
 from openpilot.system.ui.widgets.label import UnifiedLabel
+from openpilot.selfdrive.selfdrived.factory_mode import factory_mode_enabled
+
+
+def home_title(factory_mode: bool) -> str:
+  return "Factory" if factory_mode else "RehkopfPilot"
 
 
 class MiciHomeLayoutSP(MiciHomeLayout):
   def __init__(self):
     super().__init__()
     self._openpilot_label = UnifiedLabel("RehkopfPilot", font_size=70, font_weight=FontWeight.AUDIOWIDE, max_width=480, wrap_text=False)
+    self._factory_check_t = 0.0
+
+  def _update_state(self):
+    super()._update_state()
+    # factory mode for the next start (hold CANCEL in Park) replaces the title, so the next driver sees it
+    if time.monotonic() - self._factory_check_t > 1.0:
+      self._factory_check_t = time.monotonic()
+      self._openpilot_label.set_text(home_title(factory_mode_enabled(ui_state.params)))
 
   def _set_chestnut_visibility(self):
     usb_connected = ui_state.usb_connected

@@ -21,6 +21,7 @@ from opendbc.car.interfaces import CarInterfaceBase, RadarInterfaceBase
 from openpilot.selfdrive.pandad import can_capnp_to_list, can_list_to_can_capnp
 from openpilot.selfdrive.car.cruise import VCruiseHelper
 from openpilot.selfdrive.car.helpers import convert_carControlSP, convert_to_capnp
+from openpilot.selfdrive.selfdrived.factory_mode import factory_mode_enabled
 
 from openpilot.sunnypilot.mads.helpers import set_alternative_experience, set_car_specific_params
 from openpilot.sunnypilot.selfdrive.car import interfaces as sunnypilot_interfaces
@@ -130,7 +131,8 @@ class Car:
     # Dynamic Experimental Control
     self.dynamic_experimental_control = self.params.get_bool("DynamicExperimentalControl")
 
-    openpilot_enabled_toggle = self.params.get_bool("OpenpilotEnabledToggle")
+    # RehkopfPilot factory mode: passive for this drive, so the car runs stock (selfdrived/factory_mode.py)
+    openpilot_enabled_toggle = self.params.get_bool("OpenpilotEnabledToggle") and not factory_mode_enabled(self.params)
     controller_available = self.CI.CC is not None and openpilot_enabled_toggle and not self.CP.dashcamOnly
     self.CP.passive = not controller_available or self.CP.dashcamOnly
     if self.CP.passive:
