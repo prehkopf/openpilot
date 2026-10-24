@@ -32,9 +32,9 @@ inline static std::unordered_map<std::string, ParamKeyAttributes> keys = {
     {"DisableLogging", {CLEAR_ON_MANAGER_START | CLEAR_ON_ONROAD_TRANSITION, BOOL}},
     {"DisablePowerDown", {PERSISTENT | BACKUP, BOOL}},
     {"DisableUpdates", {PERSISTENT | BACKUP, BOOL, "0"}},
-    {"SettingsProfileApplied", {PERSISTENT, STRING}},
-    {"WhatsNewSeenBuild", {PERSISTENT, STRING}},
-    {"UpdaterTargetRemote", {PERSISTENT, STRING}},  // RehkopfPilot: fork URL picked in the branch switcher  // RehkopfPilot: codename whose what's-new card was last shown  // RehkopfPilot settings_profile.json version last applied
+    {"SettingsProfileApplied", {PERSISTENT, STRING}},  // RehkopfPilot: settings_profile.json version last applied
+    {"WhatsNewSeenBuild", {PERSISTENT, STRING}},  // RehkopfPilot: codename whose what's-new card was last shown
+    {"UpdaterTargetRemote", {PERSISTENT, STRING}},  // RehkopfPilot: fork URL picked in the branch switcher (updated follows only common/forks.py)
     {"DisengageOnAccelerator", {PERSISTENT | BACKUP, BOOL, "0"}},
     {"DongleId", {PERSISTENT, STRING}},
     {"DoReboot", {CLEAR_ON_MANAGER_START, BOOL}},

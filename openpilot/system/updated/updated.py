@@ -12,6 +12,7 @@ from pathlib import Path
 
 from openpilot.common.basedir import BASEDIR
 from openpilot.common.params import Params
+from openpilot.common.forks import fork_for_url
 from openpilot.common.time_helpers import system_time_valid
 from openpilot.common.markdown import parse_markdown
 from openpilot.common.swaglog import cloudlog
@@ -360,6 +361,9 @@ class Updater:
     fetching. The finalized update carries the new origin, so later updates keep following that fork."""
     url = self.params.get("UpdaterTargetRemote")
     if not url:
+      return
+    if fork_for_url(url) is None:
+      cloudlog.error("update remote not in the branch switcher's fork list, ignored")
       return
     current = run(["git", "remote", "get-url", "origin"], path).strip()
     if current != url:

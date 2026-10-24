@@ -58,3 +58,14 @@ class TestSunnylinkdMethods(OpenpilotTestCase):
     assert len(self.saved_params) == 1
     assert self.saved_params[0][0] == "SpeedLimitOffset"
     assert self.saved_params[0][1] == "10"
+
+  def test_saveParams_blocks_update_remote_and_nav_secrets(self):
+    # RehkopfPilot: a remote update URL would install someone else's code; the nav params are personal
+    sunnylinkd.saveParams({"UpdaterTargetRemote": "https://example.com/evil.git", "MapboxToken": "x",
+                           "NavFavorites": "[]", "SpeedLimitOffset": "3"})
+    assert [p[0] for p in self.saved_params] == ["SpeedLimitOffset"]
+
+  def test_getParams_never_returns_nav_secrets(self):
+    response = sunnylinkd.getParams(["MapboxToken", "NavFavorites", "IsMetric"])
+    assert "MapboxToken" not in response and "NavFavorites" not in response
+    assert "IsMetric" in response
