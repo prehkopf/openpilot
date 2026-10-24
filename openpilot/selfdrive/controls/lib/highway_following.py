@@ -3,7 +3,7 @@ lead_behavior.py), adapted to this planner, where the MPC follows leads and crui
 
 - Lane-change close-gap: while signalling out of the lane, shorten the follow time so the van accelerates into
   the pass instead of braking behind the car it is leaving.
-- Tracked-lead catch-up: on the highway, below set speed, with a radar lead well beyond the target gap, let the
+- Tracked-lead catch-up: on the highway, below set speed, with a lead well beyond the target gap, let the
   cruise candidate accelerate a little harder so the van closes the gap sooner. The MPC still holds the gap.
 """
 from openpilot.cereal import log
@@ -28,6 +28,9 @@ CATCHUP_MARGIN_START, CATCHUP_MARGIN_FULL = 0.40, 0.70  # s of headway beyond th
 CATCHUP_FADE_ABSOLUTE = (2.75, 3.10)  # s of total headway where a far lead stops counting
 CATCHUP_MAX_LATERAL = (0.9, 1.6)  # m off our path where the lead fades out
 CATCHUP_EXTRA_ACCEL = 0.3  # m/s^2 added to the cruise ceiling at full effect
+# With openpilot longitudinal the Odyssey's radar is silenced, so every lead is vision-only (radar=False on all
+# 2026-10-23 drives). Accept a vision lead the model is sure of; StarPilot uses the same 0.7 for vision leads.
+CATCHUP_MIN_MODEL_PROB = 0.7
 
 
 def smoothstep(value: float, start: float, end: float) -> float:
@@ -62,8 +65,8 @@ class LaneChangeGap:
 
 
 def catchup_accel(v_ego: float, v_cruise: float, t_follow: float, lead) -> float:
-  """Extra cruise acceleration (m/s^2) while a tracked radar lead sits well beyond the target gap."""
-  if not (lead.present and lead.radar) or v_ego < 1.0:
+  """Extra cruise acceleration (m/s^2) while a tracked lead sits well beyond the target gap."""
+  if not (lead.present and (lead.radar or lead.modelProb >= CATCHUP_MIN_MODEL_PROB)) or v_ego < 1.0:
     return 0.0
   desired_gap = get_safe_obstacle_distance(v_ego, t_follow) - get_stopped_equivalence_factor(lead.vLead)  # the MPC's gap
   if lead.dRel <= desired_gap:

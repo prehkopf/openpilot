@@ -12,8 +12,9 @@ MPH = CV.MPH_TO_MS
 T_AGGRESSIVE = 1.25
 
 
-def lead(d=40.0, v=30.0, a=0.0, y=0.0, present=True, radar=True):
-  return SimpleNamespace(dRel=d, vLead=v, aLeadK=a, yRel=y, present=present, radar=radar)
+def lead(d=40.0, v=30.0, a=0.0, y=0.0, present=True, radar=False, prob=0.95):
+  # vision-only by default: with openpilot longitudinal the Odyssey's radar is silenced
+  return SimpleNamespace(dRel=d, vLead=v, aLeadK=a, yRel=y, present=present, radar=radar, modelProb=prob)
 
 
 def run_gap(gap, seconds, state=LCS.preLaneChange, direction=LCD.left, v=70 * MPH, standstill=False,
@@ -69,8 +70,12 @@ class TestCatchup:
     assert catchup_accel(v, 80 * MPH, T_AGGRESSIVE, lead(d=4.0 * v, v=v)) == 0.0  # too far to count
     assert catchup_accel(v, 80 * MPH, T_AGGRESSIVE, lead(d=2.0 * v + 6, v=v - 4)) == 0.0  # already closing fast
     assert catchup_accel(v, 80 * MPH, T_AGGRESSIVE, lead(d=2.0 * v + 6, v=v, y=2.0)) == 0.0  # not in our path
-    assert catchup_accel(v, 80 * MPH, T_AGGRESSIVE, lead(d=2.0 * v + 6, v=v, radar=False)) == 0.0  # vision-only
+    assert catchup_accel(v, 80 * MPH, T_AGGRESSIVE, lead(d=2.0 * v + 6, v=v, prob=0.5)) == 0.0  # unsure vision lead
     assert catchup_accel(v, 80 * MPH, T_AGGRESSIVE, lead(present=False)) == 0.0
+
+  def test_radar_lead_counts_even_with_low_model_prob(self):
+    v = 70 * MPH
+    assert catchup_accel(v, 80 * MPH, T_AGGRESSIVE, lead(d=2.0 * v + 6, v=v, radar=True, prob=0.2)) > 0.0
 
   def test_bounded(self):
     for d in range(10, 300, 5):

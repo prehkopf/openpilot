@@ -57,7 +57,7 @@ flowchart TB
 
 - **Dynamic Experimental Control** (sunnypilot) decides whether the model's own acceleration joins the race: "blended" for a stop ahead, slowing traffic, a curve, a standstill or a collision risk, otherwise plain ACC. The comma four shows why in a pill (`STOP AHEAD`, `SLOWING`, `CURVE`, ...).
 - **Close-gap** (Fayette, from StarPilot): while the blinker is on for a lane change above 20 mph, the follow time ramps from your personality's gap down to 0.75 s. A car in the blind spot on that side, a lead braking hard, or a stop cancels it.
-- **Catch-up** (Fayette, from StarPilot): above 45 mph, below set speed, with a radar lead in your path that has pulled 0.4-0.7 s beyond the target gap, the cruise candidate may accelerate up to 0.3 m/s² harder. The MPC still holds the gap.
+- **Catch-up** (Fayette, from StarPilot): above 45 mph, below set speed, with a lead in your path that has pulled 0.4-0.7 s beyond the target gap, the cruise candidate may accelerate up to 0.3 m/s² harder. The MPC still holds the gap. With openpilot longitudinal the Odyssey's radar is silenced, so the lead is a vision lead the model is at least 70% sure of. It only matters in ACC mode, because in blended mode the cruise candidate has no ceiling.
 
 ## Lane changes and turns
 

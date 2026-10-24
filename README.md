@@ -57,7 +57,7 @@ Etowah plus the first round from the October upstream survey and the 2026-10-23 
 - **Passing and catching up on the highway** (ideas from StarPilot):
   - While you signal out of the lane above 20 mph, the following gap ramps down to 0.75 s so the van accelerates into the pass instead of braking behind the car it is leaving. A car in your blind spot on that side, a lead braking hard, or a stop cancels it.
   - When the car ahead pulls away on the highway and you're below set speed, the van may accelerate up to 0.3 m/s² harder to close the gap. The lead-following plan still holds the gap.
-  - All 8 gas overrides on 2026-10-23 were "go faster than the car ahead" at 70-80 mph. A planner replay of 11 highway minutes changes the plan only during the three lane changes, by up to +0.29 m/s².
+  - All 8 gas overrides on 2026-10-23 were "go faster than the car ahead" at 70-80 mph. A planner replay of 13 highway minutes (with DEC on, as driven) raises the plan during the three lane changes by up to +0.29 m/s², and through catch-up on 2 more minutes by up to +0.15 m/s². Everywhere else it is unchanged.
 - **Set speed down without the pause** (comma #39127). Lowering the set speed now slows from where the plan already is, instead of first unwinding the cruise ramp.
 - **The comma sleeps 1 hour after a drive** instead of 30, to spare the van battery. It stayed awake 8-9 hours between school runs. Set through the settings profile (v2), so it applies once after the update; change it on the comma or in sunnylink afterwards.
 - **comma four touch fixes** (comma #39140-39144): a second finger no longer confuses scrolling, flings and the keyboard.
