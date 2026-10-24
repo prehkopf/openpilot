@@ -12,6 +12,13 @@ from openpilot.tools.lib.logreader import LogReader
 MPH = 2.23694
 
 
+def recorded_params(lr):
+  """Params the replay needs to match the drive: replays start from defaults, which leave DEC off, so without
+  this the planner runs plain Experimental mode instead of what the van ran."""
+  dec = any(m.longitudinalPlanSP.dec.active for m in lr if m.which() == "longitudinalPlanSP")
+  return {"DynamicExperimentalControl": dec}
+
+
 def replay(lr, enabled):
   if enabled:
     lp.LaneChangeGap, lp.catchup_accel = ORIG
@@ -20,7 +27,7 @@ def replay(lr, enabled):
       def update(self, t_follow, *args):
         return t_follow
     lp.LaneChangeGap, lp.catchup_accel = Off, (lambda *a: 0.0)
-  out = replay_process_with_name("plannerd", lr, disable_progress=True)
+  out = replay_process_with_name("plannerd", lr, disable_progress=True, custom_params=recorded_params(lr))
   return np.array([m.longitudinalPlan.aTarget for m in out if m.which() == "longitudinalPlan"])
 
 

@@ -104,7 +104,7 @@ For a planner change, compare it with itself switched off on the same segments:
 python tools/ody/drive_report/planner_ab.py ~/rlogs/<route>--60 ~/rlogs/<route>--61   # highway following on vs off
 ```
 
-The two replays share every input, so any difference is the change itself. Comparing one replay with the logged plan mixes in replay drift (around 0.06 m/s² mean even with unchanged code).
+Both tools replay with Dynamic Experimental Control on when the recorded drive had it on (replays otherwise start from default params, with DEC off). The two replays share every input, so any difference is the change itself. Comparing one replay with the logged plan mixes in replay drift (around 0.06 m/s² mean even with unchanged code).
 
 **Known quirk:** the replay harness drops a random number of card frames each run (3 to 725 seen, on any branch). Compare values, not message counts.
 
@@ -191,5 +191,7 @@ Add one line each time Q/A finds something new. Turn it into a prepush check whe
 - **A turn taken on the gas can start a lane change.** Buckhead's rule needs braking; 4 of 34 lane changes on the 2026-10-23 drives started in a real turn at 45-67 mph with no brake. Fayette adds the navigation check; without a route it is still possible. Covered by `turn_lane_change`.
 - **`carState.vCruise` is km/h, not m/s.** A report multiplied it by the m/s-to-mph factor and showed a 74 mph set speed as 268.
 - **This openpilot has no `laneChangeFinishing`.** A lane change goes `laneChangeStarting` -> `off` when the model says it is done. Don't count "finished" by that state.
+- **Replays start from default params.** DEC is off there, so a planner replay ran plain Experimental mode, where the cruise ceiling doesn't exist, and a catch-up change looked like it did nothing. `recorded_params()` in the replay tools sets what the drive ran.
+- **With openpilot longitudinal the Odyssey has no radar leads.** The stock radar is silenced, so every `radarState` lead is vision-only (`radar=False`). Logic gated on `lead.radar` never runs on this van.
 - **A replay step that prints CRASH must also exit non-zero.** `replay_segments.py` didn't, so the prepush replay could never fail. Check that a new check can fail: break the thing on purpose once (the turn check fails with the brake rule switched off).
 - **Check upstream fixes against your own drives before porting.** Dahlonega dropped two of three candidates that way (stops were already gentle; Brake Hold never turned on). `drive_report/stop_launch_report.py` does that check.

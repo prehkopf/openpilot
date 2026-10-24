@@ -10,6 +10,13 @@ from openpilot.tools.lib.logreader import LogReader
 from openpilot.selfdrive.test.process_replay.process_replay import replay_process_with_name, check_most_messages_valid
 
 
+def recorded_params(lr):
+  """Params the replay needs to match the drive: replays start from defaults, which leave DEC off, so without
+  this the planner runs plain Experimental mode instead of what the van ran."""
+  dec = any(m.longitudinalPlanSP.dec.active for m in lr if m.which() == "longitudinalPlanSP")
+  return {"DynamicExperimentalControl": dec}
+
+
 def rlog_path(arg):
   return os.path.join(arg, "rlog.zst") if os.path.isdir(arg) else arg
 
@@ -26,7 +33,7 @@ def main(args):
     print(f"===== {seg}: {len(lr)} msgs, recorded carState {len(rec_cs)} =====")
     for proc in ("card", "controlsd", "plannerd"):
       try:
-        out = replay_process_with_name(proc, lr, disable_progress=True)
+        out = replay_process_with_name(proc, lr, disable_progress=True, custom_params=recorded_params(lr))
       except Exception as e:
         print(f"  {proc}: CRASH {type(e).__name__}: {str(e)[:300]}")
         crashed.append(f"{os.path.basename(seg)}:{proc}")
