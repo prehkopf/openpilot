@@ -41,6 +41,10 @@ step build scons -j"$(nproc)"
 # 2. the processes no unit test starts: driving model + driver monitoring, loaded and run on PC
 step models python "$CHECKS/model_e2e.py"
 
+#    store models are downloaded precompiled, unlike the default model: the live catalog must match this build
+step model_store python "$CHECKS/model_store.py"
+grep -q "^WARN" "$LOG/model_store.log" && warn "$(grep '^WARN' "$LOG/model_store.log" | head -1 | sed 's/^WARN //')"
+
 # 3. static scans: unresolved imports, unregistered params keys, unknown services
 step imports python -I "$CHECKS/importscan.py" "$ROOT"
 step params python -I "$CHECKS/paramscan.py" "$ROOT"
