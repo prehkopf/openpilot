@@ -17,6 +17,8 @@ from openpilot.selfdrive.controls.lib.drive_helpers import CONTROL_N, get_accel_
 from openpilot.selfdrive.car.cruise import V_CRUISE_MAX, V_CRUISE_UNSET
 from openpilot.common.swaglog import cloudlog
 
+from openpilot.selfdrive.controls.lib.highway_following import LaneChangeGap, catchup_accel
+from openpilot.selfdrive.controls.lib.longitudinal_mpc_lib.long_mpc import get_T_FOLLOW
 from openpilot.sunnypilot.selfdrive.controls.lib.longitudinal_planner import LongitudinalPlannerSP
 
 A_CRUISE_MAX_VALS = [1.6, 1.2, 0.8, 0.6]
@@ -37,8 +39,9 @@ def get_max_accel(v_ego):
 def get_coast_accel(pitch):
   return np.sin(pitch) * -5.65 - 0.3  # fitted from data using xx/projects/allow_throttle/compute_coast_accel.py
 
-def get_cruise_accel(e2e, v_cruise, v_ego, a_cruise_prev, angle_steers, CP, dt, accel_coast, allow_throttle, a_target_prev):
-  max_accel = ACCEL_MAX if e2e else get_max_accel(v_ego)
+def get_cruise_accel(e2e, v_cruise, v_ego, a_cruise_prev, angle_steers, CP, dt, accel_coast, allow_throttle, a_target_prev,
+                     extra_accel=0.0):
+  max_accel = ACCEL_MAX if e2e else get_max_accel(v_ego) + extra_accel
 
   if not e2e:
     a_total_max = np.interp(v_ego, _A_TOTAL_MAX_BP, _A_TOTAL_MAX_V)
@@ -68,6 +71,7 @@ class LongitudinalPlanner(LongitudinalPlannerSP):
     self.dt = dt
     self.allow_throttle = True
     self.accel_boost = AccelBoost()
+    self.lane_change_gap = LaneChangeGap()
     self.green_light_launch = GreenLightLaunch()
 
     self.v_desired_filter = FirstOrderFilter(init_v, 2.0, self.dt)
@@ -123,7 +127,13 @@ class LongitudinalPlanner(LongitudinalPlannerSP):
 
     self.mpc.set_weights(prev_accel_constraint, personality=sm['selfdriveState'].personality)
     self.mpc.set_cur_state(self.v_desired_filter.x, self.output_a_target)
-    self.mpc.update(sm['radarState'], personality=sm['selfdriveState'].personality)
+    # RehkopfPilot (from StarPilot): a shorter gap while changing lanes, quicker catch-up to a lead pulling away
+    CS, lead = sm['carState'], sm['radarState'].leadOne
+    meta = sm['modelV2'].meta
+    t_follow = self.lane_change_gap.update(get_T_FOLLOW(sm['selfdriveState'].personality), v_ego, CS.standstill,
+                                           meta.laneChangeState, meta.laneChangeDirection,
+                                           CS.leftBlindspot, CS.rightBlindspot, lead)
+    self.mpc.update(sm['radarState'], personality=sm['selfdriveState'].personality, t_follow=t_follow)
 
     self.v_desired_trajectory = np.interp(CONTROL_N_T_IDX, T_IDXS_MPC, self.mpc.v_solution)
     self.a_desired_trajectory = np.interp(CONTROL_N_T_IDX, T_IDXS_MPC, self.mpc.a_solution)
@@ -148,7 +158,8 @@ class LongitudinalPlanner(LongitudinalPlannerSP):
 
     self.a_cruise = get_cruise_accel(is_e2e, v_cruise, v_ego,
                                      self.a_cruise, steer_angle_without_offset, self.CP, self.dt,
-                                     accel_coast, self.allow_throttle, self.output_a_target)
+                                     accel_coast, self.allow_throttle, self.output_a_target,
+                                     catchup_accel(v_ego, v_cruise, t_follow, lead))
     cruise_should_stop = should_stop(v_ego, self.a_cruise)
 
     output_a_target_e2e = self.green_light_launch.update(sm['carState'].standstill, v_ego, is_e2e, output_a_target_e2e,
