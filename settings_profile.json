@@ -1,6 +1,6 @@
 {
-  "version": 1,
-  "about": "RehkopfPilot baseline settings. Applied once per version at startup (so after a reinstall) and again after a sunnylink restore. A baseline, not a lock: changes made on the device afterwards stick. Bump 'version' to re-apply.",
+  "version": 2,
+  "about": "RehkopfPilot baseline settings. Applied once per version at startup (so after a reinstall) and again after a sunnylink restore. A baseline, not a lock: changes made on the device afterwards stick. Bump 'version' to re-apply. v2 (Fayette): the comma shuts down 1 hour after a drive instead of 30 to spare the van battery.",
   "params": {
     "AlphaLongitudinalEnabled": true,
     "DynamicExperimentalControl": true,
@@ -8,6 +8,7 @@
     "LongitudinalPersonality": 0,
     "Mads": true,
     "DisableUpdates": false,
-    "OnroadScreenOffBrightness": 1
+    "OnroadScreenOffBrightness": 1,
+    "MaxTimeOffroad": 60
   }
 }
