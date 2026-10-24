@@ -10,6 +10,17 @@ All three sit on top of [comma.ai's openpilot](https://github.com/commaai/openpi
 
 Almost nothing here is mine. My part is merging the three, the Odyssey-specific fixes needed to make them agree, a few comma four screen features, and the testing. Credit for anything that drives well belongs to the people below.
 
+```mermaid
+flowchart BT
+  comma["comma.ai openpilot"] --> sp["sunnypilot"] --> mvl["MVL Honda dev"] --> rp(["RehkopfPilot"])
+  bri["brikowski ody-op<br/>Odyssey controller"] --> rp
+  comma -.->|cherry-picks| rp
+  forks["StarPilot · FrogPilot · dragonpilot"] -.->|ideas| rp
+  rp --> van(("2022 Odyssey<br/>+ comma four"))
+```
+
+**Docs:** [how it drives](docs/rehkopfpilot/how-it-drives.md) · [navigation without prime](docs/rehkopfpilot/navigation.md) · [how a release is made](docs/rehkopfpilot/release-process.md) · [testing](tools/ody/README.md)
+
 ## Credits
 
 | Who | What this build uses |
@@ -25,9 +36,11 @@ If this build is useful to you, the thanks go to them. If you have an Odyssey an
 
 | Branch | Status | Install URL |
 |---|---|---|
-| `ody-next` | My daily driver. Currently **Atlanta**. | `installer.comma.ai/prehkopf/ody-next` |
-| `ody-test` | The next release, on test drives before it moves to `ody-next`. Currently **Etowah**. Also has a **van load** setting (Empty / Family / Family + luggage) that adds gas for a heavier van; still being calibrated on loaded drives. | `installer.comma.ai/prehkopf/ody-test` |
+| `ody-next` | My daily driver. Currently **Etowah**, promoted 2026-10-19 after driving it. | `installer.comma.ai/prehkopf/ody-next` |
+| `ody-test` | The next release, on test drives before it moves to `ody-next`. Currently **Fayette**. | `installer.comma.ai/prehkopf/ody-test` |
 | MVL's branches (`sp-honda-*`, …) | Unchanged mirrors of [mvl-boston/openpilot](https://github.com/mvl-boston/openpilot) | through the branch switcher |
+
+Both branches have a **van load** setting (Empty / Family / Family + luggage) that adds gas for a heavier van; it is still being calibrated on loaded drives.
 
 The matching car code lives in [prehkopf/opendbc](https://github.com/prehkopf/opendbc) on branches of the same names.
 
@@ -35,7 +48,22 @@ The matching car code lives in [prehkopf/opendbc](https://github.com/prehkopf/op
 
 Each release is named after a place in Georgia, A to Z, and versioned by its release date (`YYYY.MM.DD`, with `.2`, `.3` for later releases the same day). The comma shows the name on the home screen and startup banner, for example "Buckhead • 5c3aa0d", and shows a short "what's new" card after an update.
 
-### Etowah (2026.10.18.6): on `ody-test`
+### Fayette (2026.10.23): on `ody-test`
+
+Etowah plus the first round from the October upstream survey and the 2026-10-23 drive review.
+
+- **Full steering range at every speed.** The Odyssey can now use its full 3840 steering counts at any speed, following brikowski's newer `ody-op-test` (cef93020). Before, the extra range above 2560 opened only at 34-74 mph after the van had missed the curve for 0.2 s, and on the 2026-10-23 drives steering sat at the 2560 limit about 7% of the time below 55 mph. The tune is scaled so ordinary steering asks for the same torque as before; the slew limit is unchanged.
+- **Turns on a route aren't lane changes.** On a navigation route, a turn coming up on the blinker side (within about 12 s of travel) counts as a turn, like braking does since Buckhead. It catches the turns taken on the gas: 4 of 34 lane changes on the 2026-10-23 drives started in a real turn at 45-67 mph with no braking. The idea is from StarPilot.
+- **Passing and catching up on the highway** (ideas from StarPilot):
+  - While you signal out of the lane above 20 mph, the following gap ramps down to 0.75 s so the van accelerates into the pass instead of braking behind the car it is leaving. A car in your blind spot on that side, a lead braking hard, or a stop cancels it.
+  - When the car ahead pulls away on the highway and you're below set speed, the van may accelerate up to 0.3 m/s² harder to close the gap. The lead-following plan still holds the gap.
+  - All 8 gas overrides on 2026-10-23 were "go faster than the car ahead" at 70-80 mph. A planner replay of 11 highway minutes changes the plan only during the three lane changes, by up to +0.29 m/s².
+- **Set speed down without the pause** (comma #39127). Lowering the set speed now slows from where the plan already is, instead of first unwinding the cruise ramp.
+- **The comma sleeps 1 hour after a drive** instead of 30, to spare the van battery. It stayed awake 8-9 hours between school runs. Set through the settings profile (v2), so it applies once after the update; change it on the comma or in sunnylink afterwards.
+- **comma four touch fixes** (comma #39140-39144): a second finger no longer confuses scrolling, flings and the keyboard.
+- **Testing:** a prepush check replays every recorded turn and lane change through the new code; the own-drive replay now covers the planner and fails on a crash; new drive reports (`route_overview.py`, `lane_change_check.py`, `planner_ab.py`). New docs with diagrams under [`docs/rehkopfpilot/`](docs/rehkopfpilot/how-it-drives.md).
+
+### Etowah (2026.10.18.6): on `ody-next`
 
 Dahlonega plus navigation without comma prime (navigation step 1).
 
@@ -97,7 +125,7 @@ A service pack: Buckhead plus fixes picked from upstream on 2026-10-18.
 - **Pre-push checklist** (`tools/ody/prepush.sh`) run before every release.
 - **Bug fixes & improvements.** sunnylink settings sync no longer drops a text setting the web app sends unencoded.
 
-### Atlanta (2026.10.17): on `ody-next`
+### Atlanta (2026.10.17)
 
 - **Status pills** on the comma four: `OP LONG` / `STOCK ACC` and `EXP` / `DEC•EXP` / `DEC•ACC`.
 - **Dynamic Experimental Control toggle** on the comma four.
@@ -107,44 +135,48 @@ A service pack: Buckhead plus fixes picked from upstream on 2026-10-18.
 
 ## Roadmap
 
-These are plans in rough order, not promises. Anything that changes how the van drives waits for enough drive data to tune it and to check the result. Last updated 2026-10-18.
+These are plans in rough order, not promises. Anything that changes how the van drives waits for enough drive data to tune it and to check the result. Last updated 2026-10-23; the full upstream and fork survey behind it is in my notes.
 
 **Next releases**
-- **Fayette**
-  - Uphill compensation. Holds and gentle slowdowns run about 0.2 m/s² short on grades over 1°.
-  - Smarter DEC on the highway: stay in ACC above about 55 mph unless the model sees a stop. Needs some highway time with DEC on first.
-  - Tune the green-light launch from real launches. Dahlonega asks for up to 1.5 m/s²; lower it if it feels abrupt.
-  - The comma stays awake 1 hour after a drive instead of 30 hours, to spare the van battery.
 - **Gwinnett**
-  - Exit slowdown (navigation step 2): slow only for the off-ramp you're taking, never for on-ramps, and not before the ramp splits from the highway. The signal is the comma's route when you're on it, and otherwise your right blinker plus the ramp in the offline map. That way it works when you follow Google Maps instead.
+  - Uphill compensation. Holds and gentle slowdowns run about 0.2 m/s² short on grades over 1°.
+  - Smarter DEC on the highway: stay in ACC above about 55 mph unless the model sees a stop. dragonpilot's AEM (choose ACC or blended from the model's own throttle probability) is the candidate.
+  - Exit slowdown (navigation step 2): slow only for the off-ramp you're taking, never for on-ramps, and not before the ramp splits from the highway. The signal is the comma's route when you're on it, and otherwise your right blinker plus the ramp in the offline map, so it works when you follow Google Maps instead. The same map check can catch turns taken on the gas without a route.
+  - brikowski's 2026-10-19 stable, car code only: ECON mode, speed calibration across wheel and transmission speed, gas kept through drivetrain and ECON changes, settled-brake release.
+- **After that**
+  - Tune the green-light launch from real launches (1 of the ~12 needed so far). Dahlonega asks for up to 1.5 m/s²; lower it if it feels abrupt.
+  - Curve speed learned from my own driving (FrogPilot's curve-speed learner): run it offline over my manual driving first and compare with sunnypilot's vision turn-speed control.
   - Learned behavior kept between drives, stored separately for each van load.
   - Van load that suggests itself from how the van accelerates, offered as a pill rather than switched silently.
 
 **Later**
-- A "Georgia traffic" personality: shorter gap at speed, quicker catch-up when the car ahead pulls away, earlier resume.
-- Gentler braking and a longer gap when the wipers are on.
-- Acceleration personality (Sport / Normal / Eco), from sunnypilot's draft #815.
+- The rest of a "Georgia traffic" personality: a shorter gap at speed and earlier resume. Fayette did the passing and catch-up parts; check the gas overrides after some highway driving first.
+- Gentler braking and a longer gap when the wipers are on (from the car's wiper signal, not an internet weather service).
+- Acceleration personality (Sport / Normal / Eco), from sunnypilot's draft #815 and StarPilot's acceleration profiles.
 - Lane change: a nudge can override the road-edge block, from sunnypilot #2049.
-- Update download progress shown as a percentage instead of a fixed "downloading...". `ody-test` first, with tests, because a broken updater can strand the device.
-- Fold in brikowski's newer Odyssey commits as he publishes them to his stable branch (ECON mode, gas at the feedforward floor, drivetrain changes, speed calibration).
+- Update download progress with speed and time left (sunnypilot #2051/#2052). `ody-test` first, with tests, because a broken updater can strand the device.
+- Keep-left / keep-right at forks on a route (StarPilot).
 
 **Investigating**
 - An emergency-braking layer to partly make up for the stock collision braking that openpilot longitudinal turns off. `ody-test` only, with safety tests.
-- Slowing for exit ramps from map data, on off-ramps only, never before the ramp splits off.
 - Handling remote start cleanly.
-- Low-speed steering: let the steering gate open below 34 mph on a test branch (see [Steering limits](#steering-limits-odyssey)). This could also simply go to brikowski, since the gate is his.
+- Delayed logging at the start of a drive, for location privacy at home (dragonpilot).
+- An offline lateral fit from my drives (friction, lateral-acceleration factor, delay), like StarPilot's Firestar Lateral Method, to check brikowski's steering tune on this van.
 
 **Watching upstream**
+- brikowski's `ody-op-test`: more gas, coast and brake qualification work every day; taken when it reaches his Monday stable.
 - comma's opendbc #3165 keeps openpilot accelerating while you press the gas. It changes panda safety for every brand and has no reviews yet, so it waits for comma to merge it.
 - comma #39105 would revert AccelBoost (gas taps add a little acceleration in Experimental mode), which this build has. It stays until comma explains the revert.
-- comma's experiments with MADS on openpilot longitudinal (`mads`, `mads2`), calibration hysteresis (#39108), and sunnypilot's detailed onroad view for the comma four (#1767).
-- comma's opendbc cleanups (remove car mass, remove rear steer ratio), once sunnypilot's next sync carries them.
+- comma AGNOS 20.1 (a device OS update), comma's experiments with MADS on openpilot longitudinal (`mads`, `mads2`), calibration hysteresis (#39108), sunnypilot's `laneful-curves` steering work, and sunnypilot's detailed onroad view for the comma four (#1767).
+- comma's opendbc cleanups (remove car mass, remove rear steer ratio) and panda safety refactors, with the next sunnypilot sync.
 
 **Decided against, for now**
 - comma 0.11.3's permanent Auto-speed. comma removed Chill mode and sunnypilot removed DEC; this build keeps Dynamic Experimental Control and takes upstream fixes by cherry-pick.
+- brikowski's automatic personality by speed (standard above 55 mph). My highway overrides ask for a shorter gap, not a longer one; Fayette's StarPilot pieces go the other way.
 - A gentler final stop (comma #38658, sunnypilot #2034): openpilot stops on my drives already end gently.
 - Disengaging on Honda Brake Hold (sunnypilot #2039): Brake Hold never turned on in 16 drives.
 - Bookmark on a distance-button hold: that hold already toggles Experimental mode in sunnypilot. The bookmark stays on double-tap CANCEL, which also cancels cruise.
+- Taking FrogPilot, StarPilot, dragonpilot or carrotpilot whole: different bases, and carrotpilot is Hyundai-first with its own safety rules. Ideas are ported one at a time instead.
 - Speed-limit-based set speed, trip mode, and an automatic post-drive email (on hold until the garage Wi-Fi is better).
 
 ## What's in `ody-next`
@@ -154,36 +186,43 @@ The branch is built in this order:
 1. sunnypilot's October 2026 comma sync (comma openpilot 2026-10-07).
 2. MVL `sp-honda-dev-202608`.
 3. comma master 2026-10-11.
-4. brikowski's Odyssey controller and fixes, through his 2026-10-12 commits.
+4. brikowski's Odyssey controller and fixes, through his 2026-10-13 stable, plus his gas-headroom fix (6d4b34f8).
+5. The RehkopfPilot releases Atlanta through Etowah (see [Releases](#releases)), including cherry-picks from comma and sunnypilot listed there.
 
 Odyssey-specific details:
 
 - **Longitudinal.** brikowski's controller replaces the generic Honda Bosch gas and wind learner for the Odyssey only. Every other Honda keeps MVL's behavior.
 - **Actuator delay is 0.5 s** on the Odyssey. brikowski's controller is tuned at 0.5 s. MVL uses 0.25 s for Bosch, but a fit of my own drives also puts the van at 0.5 s.
-- **Steering.** STEER_MAX is 3840 with delta 2, behind brikowski's steering-authority gate (normally 2560); see [Steering limits](#steering-limits-odyssey). Platform flags are `BOSCH_ALT_BRAKE | BOSCH_ALT_RADAR` (safetyParam 259).
+- **Steering.** STEER_MAX is 3840 with delta 2, behind brikowski's steering-authority gate (normally 2560); Fayette on `ody-test` drops the gate. See [Steering limits](#steering-limits-odyssey). Platform flags are `BOSCH_ALT_BRAKE | BOSCH_ALT_RADAR` (safetyParam 259).
 - **Experimental mode.** Gas taps add a small, temporary acceleration boost (comma's AccelBoost). This works with Dynamic Experimental Control.
-- **comma four screen.** An "onroad screen" picker on the Device page: always on, 15 s or 3 min (Buckhead adds dim at night).
+- **comma four screen.** An "onroad screen" picker in settings → screen & alerts: always on, 15 s or 3 min, and dim at night.
 - **Kept from comma:** the block on openpilot sending AEB. Stock emergency braking is not available with openpilot longitudinal on Bosch Hondas. openpilot's forward collision warning and hard braking still work.
 
 ## Steering limits (Odyssey)
 
-Short version: this build steers with less top-end torque than MVL's on purpose. It stays in the range where the Odyssey's steering responds cleanly, and opens more only when the van is clearly missing a curve.
+Short version: the Odyssey steers in the range where its steering responds cleanly, and since Fayette the extra range is there whenever the controller asks for it.
 
 | | Normal limit | Highest limit | Torque rise per frame |
 |---|---|---|---|
 | comma (opendbc, 2026-10) | 2560 | 2560 | 3 |
 | MVL `sp-honda-dev-202608` | 4096 | 4096 | 3 |
-| This build (brikowski's controller) | 2560 | 3840 | 2 |
+| brikowski `ody-op` stable 2026-10-19 | 2560 | 2560 | 3 |
+| Atlanta – Etowah (brikowski's earlier gate) | 2560 | 3840 at 34-74 mph | 2 (same counts/s as 3 at 2560) |
+| **Fayette** (brikowski `ody-op-test` cef93020) | 3840 | 3840 | 2 (same counts/s as 3 at 2560) |
+
+```mermaid
+xychart-beta
+  title "Time at the 2560 limit, 2026-10-23 drives (Etowah)"
+  x-axis ["< 34 mph", "34-55 mph", "55-74 mph", "> 74 mph"]
+  y-axis "% of hands-off steering time" 0 --> 10
+  bar [6.85, 7.26, 2.73, 2.66]
+```
 
 - comma's opendbc caps the Odyssey MMR at 2560, with the note "Odyssey MMR uses up to 2560 for LKA; higher RDM commands are nonlinear and also apply brake drag." Above 2560 the van treats the command like Road Departure Mitigation: the steering response is no longer proportional, and the brakes drag.
 - MVL allows the full 4096 at all times. MVL's own code notes that the top end isn't characterized yet.
-- brikowski's gate keeps steering at 2560 normally. It opens to 3840 (6% below MVL's maximum) only at 15-33 m/s (34-74 mph), when the request is already at 2560, the planned curve bends the same way, and the van has been more than 0.10 m/s² short of it for 0.2 s.
-- On my drives (99 minutes of hands-off steering, October 2026):
-  - Under 34 mph, steering sat at the 2560 limit 9.8% of the time, running a median 0.17 m/s² wide of the planned curve while limited.
-  - At 34-55 mph it was at the limit 3.7% of the time, and the gate opened past 2560 for 76 seconds in total.
-  - Above 55 mph it was under 1%.
-  - So the gate mostly matters in town, where it never opens. Above 34 mph it does its job.
-- The script is `tools/ody/drive_report/steer_cap_report.py`. A possible next step is a test branch that lets the gate open below 34 mph, watching for steering faults and brake drag. That decision is shared with brikowski.
+- brikowski's tune scales `latAccelFactor` up and `friction` down by 3840/2560, so ordinary steering asks for the same counts as the stock range, and the slew limit is the same in counts per second. The extra range only matters when the request saturates.
+- brikowski first gated the extra range (Atlanta through Etowah used that gate), reverted it in his 2026-10-19 stable, and on 2026-10-21 brought it back without a gate. Fayette follows the ungated version.
+- After a Fayette drive, `tools/ody/drive_report/steer_cap_report.py` should show less time at 2560. Watch for steering faults and brake drag in tight, slow turns.
 
 ## Testing
 

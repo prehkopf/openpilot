@@ -14,6 +14,16 @@ A change goes onto the comma only after every layer below passes. Then it gets a
 | 6. Freshness | `freshness.sh` | How far behind comma, sunnypilot, MVL and brikowski this build is |
 | 7. Drive report | `drive_report/` | What actually happened on the road |
 
+```mermaid
+flowchart LR
+  pc["PC (WSL)"] --> l1["1 opendbc suite"] --> l2["2 full build"] --> l3["3 A/B replay<br/>comma's Honda routes"]
+  l3 --> l4["4 replay my drives<br/>card · controlsd · plannerd"] --> l5["5 van model + sims"]
+  l5 --> gate{"0 prepush OK?"}
+  gate -->|yes| test["ody-test"] --> van(("van")) --> l7["7 drive report"]
+  l7 -->|lessons + new checks| l1
+  gate -->|no| fix["fix"] --> l1
+```
+
 ## 0. Pre-push checklist
 
 ```bash
@@ -148,6 +158,12 @@ What to look at after a drive:
 - **Panda TX blocks.** They're benign when they happen only at engage and disengage edges.
 
 ## Updating from upstream
+
+```mermaid
+flowchart LR
+  f["freshness.sh"] --> sp["1 sunnypilot sync<br/>(cherry-pick since 0.11.3)"] --> mvl["2 MVL dev"] --> c["3 comma master<br/>(cherry-pick)"] --> b["4 brikowski<br/>Odyssey commits"]
+  b --> t["layers 1-4"] --> push["git push-code"]
+```
 
 1. Run `freshness.sh` to see what's new.
 2. Merge, in this order: sunnypilot sync, then MVL dev, then comma master, then brikowski's Odyssey commits.
