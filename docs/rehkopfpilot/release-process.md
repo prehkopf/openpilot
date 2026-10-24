@@ -70,7 +70,7 @@ timeline
         : Chattahoochee : settings in 5 groups, van load first
         : Dahlonega : green-light launch, MADS brake-pause fix
         : Etowah : navigation without prime, offline map
-  10-23 : Fayette : full-range steering, nav-aware turns, StarPilot gap, sleep after 1 h
+  10-24 : Fayette : full-range steering, nav-aware turns, StarPilot gap, sleep after 1 h
 ```
 
 A release touches four places:

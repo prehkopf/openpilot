@@ -48,7 +48,7 @@ The matching car code lives in [prehkopf/opendbc](https://github.com/prehkopf/op
 
 Each release is named after a place in Georgia, A to Z, and versioned by its release date (`YYYY.MM.DD`, with `.2`, `.3` for later releases the same day). The comma shows the name on the home screen and startup banner, for example "Buckhead • 5c3aa0d", and shows a short "what's new" card after an update.
 
-### Fayette (2026.10.23): on `ody-test`
+### Fayette (2026.10.24): on `ody-test`
 
 Etowah plus the first round from the October upstream survey and the 2026-10-23 drive review.
 
