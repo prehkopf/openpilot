@@ -1,13 +1,18 @@
 #!/usr/bin/env bash
-# A/B process replay of the Honda routes: a base commit (default: the sunnypilot master this fork tracks)
-# against the current checkout. Every difference should trace to a deliberate MVL or brikowski change.
+# A/B process replay of the Honda routes: a base commit (default: SP_BASE below, the last sunnypilot master before
+# comma 0.11.3) against the current checkout. Every difference should trace to a deliberate MVL or brikowski change.
+# The base is pinned: sunnypilot master now carries 0.11.3 (no DEC, new card API) and its own replay crashes here.
 # usage: replay_ab.sh [base ref or sha] [base dir]    run from a built checkout (see build_pc.sh)
 set -e
 export PATH="$HOME/.local/bin:$PATH"
 HERE=$(git rev-parse --show-toplevel)
 BASE_DIR=${2:-$HOME/spbase}
-git -C "$HERE" fetch -q https://github.com/sunnypilot/sunnypilot.git "${1:-master}"
-BASE=$(git -C "$HERE" rev-parse FETCH_HEAD)
+SP_BASE=27c132984df60e9ef42ebd1a805738b8c851356f  # sunnypilot master 2026-10-16
+REF=${1:-$SP_BASE}
+if ! BASE=$(git -C "$HERE" rev-parse -q --verify "$REF^{commit}"); then
+  git -C "$HERE" fetch -q https://github.com/sunnypilot/sunnypilot.git "$REF"
+  BASE=$(git -C "$HERE" rev-parse FETCH_HEAD)
+fi
 echo "base $BASE"
 [ -d "$BASE_DIR" ] || git -C "$HERE" worktree add -f --detach "$BASE_DIR" "$BASE"
 cd "$BASE_DIR"
