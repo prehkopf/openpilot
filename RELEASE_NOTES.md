@@ -3,6 +3,12 @@
 One section per codename (see BUILD_NAME). The comma shows the current one as a card after an update. Keep each
 to 3-4 short lines (30 characters at most) so it fits the card.
 
+## Fayette
+- Full steering at every speed
+- Turns on a route stay turns
+- Quicker passing on highways
+- Sleeps 1 h after a drive
+
 ## Etowah
 - Navigation without prime
 - Offline Georgia map
