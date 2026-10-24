@@ -49,7 +49,7 @@ def update_model_hash():
 
   import subprocess
   rel = os.path.relpath(BIG_DRIVING_PKL_PATH, os.getcwd())
-  pointer = subprocess.check_output(["git", "show", f"HEAD:{rel}"], text=True)
+  pointer = subprocess.check_output(["git", "show", f"HEAD:./{rel}"], text=True)  # "./": relative to the cwd, as rel is
   oid = next(l.split(":", 1)[1] for l in pointer.splitlines() if l.startswith("oid sha256:"))
   big_fingerprint = f"{oid}:{fields.get('DEFAULT_BIG_MODEL', '')}:{fields.get('DEFAULT_BIG_MODEL_REF', '')}"
   big_combined_hash = hashlib.sha256(big_fingerprint.encode()).hexdigest()
