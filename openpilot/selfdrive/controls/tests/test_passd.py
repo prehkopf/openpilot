@@ -141,6 +141,14 @@ def test_no_hint_without_the_dashed_line_or_off_a_divided_road():
   assert not any(m.show for m in run(passd.CHIME, oneway=False))
 
 
+def test_start_of_drive_before_the_first_model_frame():
+  # seen on the van: calibration and a camera frame arrive before modelV2, whose laneLines list is still empty
+  d = passd.PassD(Params(passd.LEARNING), Matcher(), passive=False)
+  sm = sm_stuck()
+  sm['modelV2'] = messaging.new_message('modelV2').modelV2
+  assert not d.update(sm, nv12(), 0.0).passAdvice.show
+
+
 def test_a_crashed_passd_never_blocks_or_ends_engagement():
   # selfdrived raises processNotRunning (no entry, soft disable) for a managed process that died, unless it's ignored
   import ast

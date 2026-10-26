@@ -64,8 +64,8 @@ class PassD:
 
   def read_lines(self, model, buf, now: float) -> None:
     """Classify the model's left (1) and right (2) lane lines in a road camera frame."""
-    if self.view_from_calib is None or self.camera is None or buf is None:
-      return
+    if self.view_from_calib is None or self.camera is None or buf is None or len(model.laneLines) < 3:
+      return  # len: no model frame yet at the start of a drive
     y, u, v = nv12_planes(buf)
     scale = (buf.width / self.camera.width, buf.height / self.camera.height)
     for vote, idx in zip(self.votes, (1, 2), strict=True):
