@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Pre-push checklist for RehkopfPilot releases. Run from a PC build of this fork (WSL / Ubuntu 24.04).
 # usage: tools/ody/prepush.sh [--full] [--target ody-next|ody-test] [--rlogs DIR]
-#   default (~4 min): build, models on PC, code scans, unit/UI tests, Honda car + safety tests,
+#   default (~2 min): build, models on PC, code scans, unit/UI tests, Honda car + safety tests,
 #                     replay of a recorded Odyssey segment (card, controlsd, plannerd), recorded turns vs lane
 #                     changes, submodule pins, release bump
 #   --full          : also opendbc's whole suite (tools/ody/opendbc_test.sh) and the A/B replay
@@ -24,11 +24,35 @@ export PYTHONPATH="$ROOT"
 CHECKS="$ROOT/tools/ody/checks"
 LOG=$(mktemp -d)
 FAILS=(); WARNS=()
+report() {  # name, exit code, seconds
+  if [ "$2" = 0 ]; then printf "  PASS  %-22s %4ss\n" "$1" "$3"
+  else printf "  FAIL  %-22s %4ss  (log: %s)\n" "$1" "$3" "$LOG/$1.log"; tail -15 "$LOG/$1.log" | sed 's/^/        | /'; FAILS+=("$1"); fi
+}
 step() {  # name, command...   (required)
   local name=$1; shift
   local t0=$SECONDS
-  if "$@" > "$LOG/$name.log" 2>&1; then printf "  PASS  %-22s %4ss\n" "$name" $((SECONDS-t0))
-  else printf "  FAIL  %-22s %4ss  (log: %s)\n" "$name" $((SECONDS-t0)) "$LOG/$name.log"; tail -15 "$LOG/$name.log" | sed 's/^/        | /'; FAILS+=("$name"); fi
+  "$@" > "$LOG/$name.log" 2>&1
+  report "$name" $? $((SECONDS-t0))
+}
+# Independent single-process checks run side by side (the slow multi-core steps run alone after them).
+# Each gets its own OPENPILOT_PREFIX, so its message queues (/dev/shm/msgq_<prefix>) and params are its own.
+# Results print in launch order when the batch is done, so the report reads like a serial run.
+BATCH=()
+batch() {  # name, command...   (required, started in the background)
+  local name=$1; shift
+  BATCH+=("$name")
+  ( export OPENPILOT_PREFIX="prepush_$name"; mkdir -p "/dev/shm/msgq_$OPENPILOT_PREFIX"
+    t0=$SECONDS; "$@" > "$LOG/$name.log" 2>&1; echo "$? $((SECONDS-t0))" > "$LOG/$name.rc"
+    rm -rf "/dev/shm/msgq_$OPENPILOT_PREFIX" "$HOME/.comma/params/$OPENPILOT_PREFIX" ) &
+}
+batch_wait() {
+  wait
+  local name rc secs
+  for name in "${BATCH[@]}"; do
+    read -r rc secs < "$LOG/$name.rc"
+    report "$name" "$rc" "$secs"
+  done
+  BATCH=()
 }
 warn() { printf "  WARN  %s\n" "$*"; WARNS+=("$*"); }
 
@@ -38,22 +62,56 @@ echo "build: $(cat BUILD_NAME 2>/dev/null) $(grep -o '"[^"]*"' openpilot/sunnypi
 # 1. build (params keys are compiled in, so a stale build gives false UnknownKeyName failures)
 step build scons -j"$(nproc)"
 
+# locationd GPS test: timing-sensitive (waits 5 s for a param), so it runs first, alone, on a quiet machine.
+#    It passes 10/10 when quiet but failed 3 back-to-back retries right after the parallel pytest run (and waiting
+#    for the load average to settle after it cost up to a minute), so: right after the build, retried, with a
+#    settle in case something else is loading the PC.
+settle() { for _ in $(seq 30); do awk -v n="$(nproc)" '{exit !($1 < n / 4)}' /proc/loadavg && return; sleep 2; done; }
+settle
+step locationd_gps bash -c "cd openpilot && for i in 1 2 3; do timeout 120 python -m pytest -q -p no:cacheprovider --timeout=60 \
+  sunnypilot/selfdrive/locationd/tests/test_locationd.py::TestLocationdProc::test_params_gps && exit 0; sleep 10; done; exit 1"
+
+SEG=$(ls -d "$RLOGS"/*--*--* 2>/dev/null | sort -V | tail -40 | head -1)
+[ -n "$SEG" ] || warn "no rlogs at $RLOGS, skipped own-drive replay"
+
+# 2-5 in parallel.
 # 2. the processes no unit test starts: driving model + driver monitoring, loaded and run on PC
-step models python "$CHECKS/model_e2e.py"
-
+batch models python "$CHECKS/model_e2e.py"
 #    store models are downloaded precompiled, unlike the default model: the live catalog must match this build
-step model_store python "$CHECKS/model_store.py"
-grep -q "^WARN" "$LOG/model_store.log" && warn "$(grep '^WARN' "$LOG/model_store.log" | head -1 | sed 's/^WARN //')"
-
+batch model_store python "$CHECKS/model_store.py"
 # 3. static scans: unresolved imports, unregistered params keys, unknown services
-step imports python -I "$CHECKS/importscan.py" "$ROOT"
-step params python -I "$CHECKS/paramscan.py" "$ROOT"
-step services python "$CHECKS/svcscan.py" "$ROOT"
-step lint ruff check openpilot/selfdrive openpilot/sunnypilot openpilot/system openpilot/common tools/ody
+batch imports python -I "$CHECKS/importscan.py" "$ROOT"
+batch params python -I "$CHECKS/paramscan.py" "$ROOT"
+batch services python "$CHECKS/svcscan.py" "$ROOT"
+batch lint ruff check openpilot/selfdrive openpilot/sunnypilot openpilot/system openpilot/common tools/ody
 #    the device installer pulls LFS from .lfsconfig's host only; comma-merged objects can be missing there
-step lfs_host python -I "$CHECKS/lfs_host.py" "$ROOT"
+batch lfs_host python -I "$CHECKS/lfs_host.py" "$ROOT"
+#    settings pages are built only at UI start and drawn only when opened: build + render every one offscreen
+batch settings_ui python tools/ody/checks/settings_render.py "$LOG/settings"
+# 4. Honda car and safety tests (the car tests split across workers run below, with the other multi-core steps)
+batch honda_car env PYTHONPATH="$ROOT/opendbc_repo:$ROOT" python -m pytest -q -p no:cacheprovider opendbc_repo/opendbc/car/honda/tests
+batch honda_safety env PYTHONPATH="$ROOT/opendbc_repo:$ROOT" python -m pytest -q -p no:cacheprovider opendbc_repo/opendbc/safety/tests/test_honda.py
+# 5. card + controlsd from this build on a recorded Odyssey drive (newest pulled segment with openpilot long)
+if [ -n "$SEG" ]; then
+  batch replay python tools/ody/replay_segments.py "$SEG"
+  #  this build's DesireHelper over recorded turns and lane changes: no more lane changes started in real turns, and
+  #  no fewer real lane changes, than the build that drove them (a turn on the gas once started a lane change)
+  batch turn_lane_change python "$CHECKS/turn_lane_change.py" "$RLOGS"
+  #  factory mode leaves the van stock: card passive, noOutput safety, nothing sent (no radar silence)
+  batch factory_mode python "$CHECKS/factory_mode.py" "$SEG"
+fi
+#    calmer stop-and-go DEC: no flicker on the route 24 stop-and-go, and the replay still matches the van
+batch dec_calm python "$CHECKS/dec_calm.py" "$RLOGS"
+# 7. release audit vs the published branch: params keys whose type changed (and their readers), commits with
+#    no real author identity in openpilot or in the opendbc pin range
+if [ -n "$TARGET" ] && git rev-parse -q --verify "origin/$TARGET" >/dev/null; then
+  batch release_audit python -I "$CHECKS/release_audit.py" "$ROOT" "origin/$TARGET"
+fi
+batch_wait
+grep -q "^WARN" "$LOG/model_store.log" && warn "$(grep '^WARN' "$LOG/model_store.log" | head -1 | sed 's/^WARN //')"
+[ -f "$LOG/release_audit.log" ] && while read -r w; do warn "$w"; done < <(grep "^WARN" "$LOG/release_audit.log" | sed 's/^WARN //')
 
-# 4. tests: openpilot + sunnypilot unit/UI tests, Honda car and safety tests
+# 4. the multi-core tests, one at a time: openpilot + sunnypilot unit/UI tests, Honda car tests across workers
 #    locationd/calibrationd scenario tests assert comma's thresholds; MVL widened them on purpose (mount tolerance)
 step pytest bash -c "cd openpilot && python -m pytest -q -p no:cacheprovider -n $(nproc) --timeout=300 common selfdrive system sunnypilot \
   --ignore=selfdrive/test/process_replay --ignore=selfdrive/ui/tests/diff \
@@ -62,43 +120,13 @@ step pytest bash -c "cd openpilot && python -m pytest -q -p no:cacheprovider -n 
   --deselect openpilot/selfdrive/locationd/test/test_locationd_scenarios.py::TestLocationdScenarios::test_consistent_timing_spikes \
   --deselect openpilot/sunnypilot/selfdrive/locationd/tests/test_locationd.py::TestLocationdProc::test_params_gps \
   -k 'not onroad and not power_draw and not test_models_segs'"
-#    timing-sensitive (waits 5 s for a param); alone and retried so CPU load from the parallel run can't fail it.
-#    It passes 10/10 on a quiet machine but failed 3 back-to-back retries right after the parallel run, so wait
-#    (up to 60 s) for the 1-minute load average to drop under a quarter of the cores, and pause between retries.
-settle() { for _ in $(seq 30); do awk -v n="$(nproc)" '{exit !($1 < n / 4)}' /proc/loadavg && return; sleep 2; done; }
-settle
-step locationd_gps bash -c "cd openpilot && for i in 1 2 3; do timeout 120 python -m pytest -q -p no:cacheprovider --timeout=60 \
-  sunnypilot/selfdrive/locationd/tests/test_locationd.py::TestLocationdProc::test_params_gps && exit 0; sleep 10; done; exit 1"
-#    settings pages are built only at UI start and drawn only when opened: build + render every one offscreen
-step settings_ui python tools/ody/checks/settings_render.py "$LOG/settings"
-step honda_car env PYTHONPATH="$ROOT/opendbc_repo:$ROOT" python -m pytest -q -p no:cacheprovider opendbc_repo/opendbc/car/honda/tests
-#    same tests split across workers: the Odyssey get_params sets class-level CarControllerParams values, so a test
-#    can pass serially only because an earlier test built Odyssey params in the same process
+#    the Odyssey get_params sets class-level CarControllerParams values, so a test can pass serially only because
+#    an earlier test built Odyssey params in the same process
 step honda_car_parallel env PYTHONPATH="$ROOT/opendbc_repo:$ROOT" python -m pytest -q -p no:cacheprovider -n "$(nproc)" \
   opendbc_repo/opendbc/car/honda/tests
-step honda_safety env PYTHONPATH="$ROOT/opendbc_repo:$ROOT" python -m pytest -q -p no:cacheprovider opendbc_repo/opendbc/safety/tests/test_honda.py
-
-# 5. card + controlsd from this build on a recorded Odyssey drive (newest pulled segment with openpilot long)
-SEG=$(ls -d "$RLOGS"/*--*--* 2>/dev/null | sort -V | tail -40 | head -1)
-if [ -n "$SEG" ]; then step replay python tools/ody/replay_segments.py "$SEG"; else warn "no rlogs at $RLOGS, skipped own-drive replay"; fi
-#    this build's DesireHelper over recorded turns and lane changes: no more lane changes started in real turns, and
-#    no fewer real lane changes, than the build that drove them (a turn on the gas once started a lane change)
-if [ -n "$SEG" ]; then step turn_lane_change python "$CHECKS/turn_lane_change.py" "$RLOGS"; fi
-#    factory mode leaves the van stock: card passive, noOutput safety, nothing sent (no radar silence)
-if [ -n "$SEG" ]; then step factory_mode python "$CHECKS/factory_mode.py" "$SEG"; fi
-#    calmer stop-and-go DEC: no flicker on the route 24 stop-and-go, and the replay still matches the van
-step dec_calm python "$CHECKS/dec_calm.py" "$RLOGS"
-
 # 6. submodule pins: does our tinygrad contain the pin comma's current master expects? (informational)
 python "$CHECKS/pin_check.py" > "$LOG/pins.log" 2>&1; sed 's/^/        /' "$LOG/pins.log"
 grep -q "^WARN" "$LOG/pins.log" && warn "submodule pins: see above"
-
-# 7. release audit vs the published branch: params keys whose type changed (and their readers), commits with
-#    no real author identity in openpilot or in the opendbc pin range
-if [ -n "$TARGET" ] && git rev-parse -q --verify "origin/$TARGET" >/dev/null; then
-  step release_audit python -I "$CHECKS/release_audit.py" "$ROOT" "origin/$TARGET"
-  while read -r w; do warn "$w"; done < <(grep "^WARN" "$LOG/release_audit.log" | sed 's/^WARN //')
-fi
 
 # 8. release bump: a push to ody-next/ody-test should carry a new codename + release-date version
 if [ -n "$TARGET" ] && git rev-parse -q --verify "origin/$TARGET" >/dev/null; then
