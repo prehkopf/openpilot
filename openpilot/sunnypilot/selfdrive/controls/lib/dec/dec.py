@@ -19,6 +19,19 @@ TRAJECTORY_SIZE = 33
 SET_MODE_TIMEOUT = 15
 CURVE_YAW = 0.35  # rad (~20 deg) of model path heading change at the trajectory end counts as a curve
 
+# RehkopfPilot: calmer stop-and-go. In town the slowdown test sits near its threshold (the distance it expects grows with
+# speed), so DEC cycled every ~6 s: ACC accelerated hard, the faster speed tripped the test, blended braked hard, repeat
+# (route 24, 2026-10-25). Leave blended only once the path has been clear for a while, and after a slowdown let the
+# cruise speed back up gently for a few seconds.
+RELEASE_URGENCY = 0.10  # urgency below this counts as a clear path (the trigger is 0.24, so there is a band between)
+RELEASE_HOLD_FRAMES = 30  # 1.5 s of clear path before a slowdown releases blended
+RELEASE_HOLD_MAX_FRAMES = 100  # but never hold blended more than 5 s past the slowdown test clearing
+HOLD_REASONS = ('slowing', 'stopAhead', 'curve')
+POST_SLOWDOWN_MIN_FRAMES = 20  # a blended stay shorter than 1 s is not a slowdown episode
+POST_SLOWDOWN_FRAMES = 120  # 6 s of gentle acceleration after one
+POST_SLOWDOWN_ACCEL_MAX = 0.5  # m/s^2
+POST_SLOWDOWN_SPEEDS = (1.5, 13.0)  # m/s (about 3-29 mph): pulling away from a stop and highway speeds are not limited
+
 # Define the valid mode types
 ModeType = Literal['acc', 'blended']
 
@@ -87,7 +100,7 @@ class ModeTransitionManager:
     self.mode_duration = 0
     self.emergency_override = False
 
-  def request_mode(self, mode: ModeType, confidence: float = 1.0, emergency: bool = False):
+  def request_mode(self, mode: ModeType, confidence: float = 1.0, emergency: bool = False, hold: bool = False):
     # Emergency override for critical situations (stops, collisions)
     if emergency:
       self.emergency_override = True
@@ -101,8 +114,8 @@ class ModeTransitionManager:
       if m != mode:
         self.mode_confidence[m] = max(0.0, self.mode_confidence[m] - 0.05)
 
-    # Require minimum duration in current mode (unless emergency)
-    if self.mode_duration < self.min_mode_duration and not self.emergency_override:
+    # Require minimum duration in current mode (unless emergency); hold: count the request but don't switch yet
+    if (self.mode_duration < self.min_mode_duration and not self.emergency_override) or hold:
       return
 
     # Hysteresis: higher threshold for mode changes
@@ -186,6 +199,12 @@ class DynamicExperimentalController:
     self._trajectory_valid = False
     self._path_yaw = 0.0
     self._reason = 'none'
+    # calmer stop-and-go
+    self._clear_frames = 0
+    self._hold_frames = 0
+    self._blended_frames = 0
+    self._prev_mode: ModeType = 'acc'
+    self._cap_frames = 0
 
   def _read_params(self) -> None:
     if self._frame % int(1. / DT_MDL) == 0:
@@ -200,7 +219,22 @@ class DynamicExperimentalController:
 
   def _request_blended(self, reason: str, confidence: float, emergency: bool = False) -> None:
     self._reason = reason
+    self._hold_frames = 0
     self._mode_manager.request_mode('blended', confidence=confidence, emergency=emergency)
+
+  def _request_acc(self, confidence: float) -> None:
+    # a slowdown keeps blended until the path has been clear for RELEASE_HOLD_FRAMES, not just under the trigger
+    hold = (self.mode() == 'blended' and self._reason in HOLD_REASONS and self._clear_frames < RELEASE_HOLD_FRAMES and
+            self._hold_frames < RELEASE_HOLD_MAX_FRAMES)
+    self._hold_frames += hold
+    self._mode_manager.request_mode('acc', confidence=confidence, hold=hold)
+
+  def accel_cap(self) -> float:
+    """Most acceleration (m/s^2) the planner may ask for: gentle for a few seconds after a slowdown, else no limit."""
+    v_ego = self._v_ego_kph / 3.6
+    if self._active and self._cap_frames > 0 and POST_SLOWDOWN_SPEEDS[0] < v_ego < POST_SLOWDOWN_SPEEDS[1]:
+      return POST_SLOWDOWN_ACCEL_MAX
+    return float('inf')
 
   def _slow_down_reason(self) -> str:
     if abs(self._path_yaw) > CURVE_YAW:
@@ -244,6 +278,7 @@ class DynamicExperimentalController:
 
     # Slow down detection
     self._calculate_slow_down(md)
+    self._clear_frames = self._clear_frames + 1 if self._urgency < RELEASE_URGENCY else 0
 
     # Slowness detection
     if not (self._standstill_count > 5) and not self._has_slow_down:
@@ -346,11 +381,11 @@ class DynamicExperimentalController:
 
     # Driving slow: use ACC (but not if actively slowing down)
     if self._has_slowness and not self._has_slow_down:
-      self._mode_manager.request_mode('acc', confidence=0.8)
+      self._request_acc(0.8)
       return
 
     # Default: ACC
-    self._mode_manager.request_mode('acc', confidence=0.7)
+    self._request_acc(0.7)
 
   def _radar_mode(self) -> None:
     """Radar mode with emergency handling."""
@@ -383,11 +418,11 @@ class DynamicExperimentalController:
 
     # Driving slow: use ACC (but not if actively slowing down)
     if self._has_slowness and not self._has_slow_down:
-      self._mode_manager.request_mode('acc', confidence=0.8)
+      self._request_acc(0.8)
       return
 
     # Default: ACC
-    self._mode_manager.request_mode('acc', confidence=0.7)
+    self._request_acc(0.7)
 
   def update(self, sm: messaging.SubMaster) -> None:
     self._read_params()
@@ -403,4 +438,16 @@ class DynamicExperimentalController:
 
     self._mode_manager.update()
     self._active = sm['selfdriveState'].experimentalMode and self._enabled
+    self._update_post_slowdown()
     self._frame += 1
+
+  def _update_post_slowdown(self) -> None:
+    mode = self.mode()
+    if mode == 'blended':
+      self._blended_frames += 1
+    else:
+      ended_slowdown = (self._prev_mode == 'blended' and self._blended_frames >= POST_SLOWDOWN_MIN_FRAMES and
+                        self._reason in ('slowing', 'stopAhead'))
+      self._cap_frames = POST_SLOWDOWN_FRAMES if ended_slowdown else max(0, self._cap_frames - 1)
+      self._blended_frames = 0
+    self._prev_mode = mode

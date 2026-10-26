@@ -3,6 +3,11 @@
 One section per codename (see BUILD_NAME). The comma shows the current one as a card after an update. Keep each
 to 3-4 short lines (30 characters at most) so it fits the card.
 
+## Gwinnett SP1
+- Calmer stop-and-go
+- Gentler speed-ups in town
+- Bug fixes & improvements
+
 ## Gwinnett
 - Easter egg: wife mode
 - Park + hold CANCEL 3 s

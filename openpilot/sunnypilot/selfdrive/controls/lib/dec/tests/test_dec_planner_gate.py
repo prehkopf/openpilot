@@ -17,9 +17,10 @@ E2E_ACCEL = -3.0  # low enough that e2e wins the min() whenever it is a candidat
 
 
 class MockDec:
-  def __init__(self, active: bool, mode: str):
+  def __init__(self, active: bool, mode: str, cap: float = float('inf')):
     self._active = active
     self._mode = mode
+    self.cap = cap
 
   def update(self, sm):
     pass
@@ -32,6 +33,9 @@ class MockDec:
 
   def enabled(self) -> bool:
     return True
+
+  def accel_cap(self) -> float:
+    return self.cap
 
 
 class MockSubMaster(dict):
@@ -110,3 +114,16 @@ class TestDecPlannerGate(OpenpilotTestCase):
   def test_no_e2e_when_dec_holds_acc(self):
     # the regression
     assert self._source(True, True, 'acc') != LongitudinalPlanSource.e2e
+
+  def test_dec_accel_cap_limits_speeding_up_only(self):
+    # RehkopfPilot: after a slowdown DEC caps acceleration; braking must pass through untouched
+    planner = build_planner(True, 'acc')
+    planner.dec.cap = 0.2  # ty: ignore[unresolved-attribute]
+    sm = build_sm(False)  # plain ACC, below the 100 km/h set speed: the cruise plan accelerates
+    for _ in range(60):
+      planner.update(sm)
+    assert 0.0 < planner.output_a_target <= 0.2 + 1e-6
+    planner = build_planner(True, 'blended')
+    planner.dec.cap = 0.2  # ty: ignore[unresolved-attribute]
+    planner.update(build_sm(True))  # e2e asks for -3.0
+    assert planner.output_a_target < -1.0
