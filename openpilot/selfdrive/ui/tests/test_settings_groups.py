@@ -52,12 +52,13 @@ def test_home_order_is_most_used_first():
 
 
 def test_driving_order_is_most_used_first():
-  order = "[self._load, self._destination, self._personality, self._dec, self._lane_change, self._experimental, self._mads, self._enable]"
+  order = ("[self._load, self._destination, self._personality, self._dec, self._lane_change, self._pass_hints, self._experimental, " +
+           "self._mads, self._enable]")
   assert order in " ".join(GROUPS.split()).replace("[ ", "[")
 
 
 def test_moved_pickers_are_in_groups_not_on_device_page():
-  for widget in ("OnroadScreenToggle()", "LoadPresetToggle()", "LaneChangeModeToggle()"):
+  for widget in ("OnroadScreenToggle()", "LoadPresetToggle()", "LaneChangeModeToggle()", "PassHintsToggle()"):
     assert GROUPS.count(widget) == 1, widget
     assert widget not in DEVICE, widget
 

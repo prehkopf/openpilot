@@ -45,6 +45,8 @@ sound_list_sp: dict[int, tuple[str, int | None, float]] = {
   # RehkopfPilot factory mode voice clips (mono, 16-bit, 48 kHz; tools/ody/checks/sounds.py)
   AudibleAlertSP.factoryModeOn: ("factory_mode_on.wav", 1, MAX_VOLUME),
   AudibleAlertSP.factoryModeOff: ("factory_mode_off.wav", 1, MAX_VOLUME),
+  # RehkopfPilot pass hints: a soft two-note chime (~6 dB under the alert chimes)
+  AudibleAlertSP.passHint: ("pass_hint.wav", 1, MAX_VOLUME),
 }
 
 sound_list: dict[int, tuple[str, int | None, float]] = {
@@ -65,6 +67,18 @@ sound_list: dict[int, tuple[str, int | None, float]] = {
   **sound_list_sp,
   CRITICAL_MAX: ("dm_critical_max.wav", None, MAX_VOLUME),
 }
+
+class PassChime:
+  """RehkopfPilot: passd counts the hints that should chime (passAdvice.chimeCount); play each once. The first count seen is
+  only a baseline, so a soundd restart mid-drive doesn't replay an old hint."""
+  def __init__(self):
+    self.last: int | None = None
+
+  def update(self, count: int) -> bool:
+    new = self.last is not None and count > self.last
+    self.last = count
+    return new
+
 
 def check_selfdrive_timeout_alert(sm):
   ss_missing = time.monotonic() - sm.recv_time['selfdriveState']
@@ -188,7 +202,8 @@ class Soundd(QuietMode):
     import sounddevice as sd
     micd.patch_sounddevice(sd)
 
-    sm = messaging.SubMaster(['selfdriveState', 'selfdriveStateSP', 'soundPressure'])
+    sm = messaging.SubMaster(['selfdriveState', 'selfdriveStateSP', 'soundPressure', 'passAdvice'])
+    pass_chime = PassChime()
 
     with self.get_stream(sd) as stream:
       rk = Ratekeeper(20)
@@ -206,6 +221,8 @@ class Soundd(QuietMode):
             self.current_volume = self.calculate_volume(float(self.spl_filter_weighted.x))
 
         self.get_audible_alert(sm)
+        if sm.updated['passAdvice'] and pass_chime.update(sm['passAdvice'].chimeCount) and self.current_alert == AudibleAlert.none:
+          self.update_alert(AudibleAlertSP.passHint)  # never over a real alert; a real alert still cuts it off
 
         if self.current_alert in (AudibleAlert.warningSoft, AudibleAlert.warningImmediate):
           elapsed = time.monotonic() - self.ramp_start_time

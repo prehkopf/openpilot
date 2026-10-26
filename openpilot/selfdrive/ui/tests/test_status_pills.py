@@ -28,6 +28,10 @@ def texts(p: PillInputs):
   # factory mode: op long stays set in CarParams, but the car is stock, so nothing about op long is shown
   (PillInputs(op_long=True, experimental=True, dec_enabled=True, dec_active=True, lead_dist=42.0, v_ego=20.0,
               load_preset=1, factory=True), [["FACTORY"]]),
+  # RehkopfPilot pass hints: their own top row
+  (PillInputs(op_long=True, pass_dir=1), [["◀ PASS"], ["OP LONG"]]),
+  (PillInputs(op_long=False, pass_dir=2, pass_cars=2), [["PASS ▶ ×2"], ["STOCK ACC"]]),
+  (PillInputs(op_long=True, pass_dir=1, factory=True), [["FACTORY"]]),
 ])
 def test_pill_rows(p, want):
   assert texts(p) == want

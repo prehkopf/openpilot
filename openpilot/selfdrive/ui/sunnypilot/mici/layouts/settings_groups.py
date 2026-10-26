@@ -9,6 +9,7 @@ from openpilot.selfdrive.ui.layouts.settings.common import restart_needed_callba
 from openpilot.selfdrive.ui.mici.widgets.button import BigButton, BigMultiParamToggle, BigParamControl
 from openpilot.selfdrive.ui.sunnypilot.mici.widgets.destination import DestinationToggle
 from openpilot.selfdrive.ui.sunnypilot.mici.widgets.lane_change_mode import LaneChangeModeToggle
+from openpilot.selfdrive.ui.sunnypilot.mici.widgets.pass_hints import PassHintsToggle
 from openpilot.selfdrive.ui.sunnypilot.mici.widgets.load_preset import LoadPresetToggle
 from openpilot.selfdrive.ui.sunnypilot.mici.widgets.onroad_screen import OnroadScreenToggle
 from openpilot.selfdrive.ui.ui_state import ui_state
@@ -79,12 +80,13 @@ class DrivingGroup(GroupLayout):
                                              "and the LKAS button turns steering on by itself.\n" +
                                              "Change it with the car off.")
     self._lane_change = LaneChangeModeToggle()
+    self._pass_hints = PassHintsToggle()
     self._enable = BigParamControl("enable RehkopfPilot", "OpenpilotEnabledToggle", toggle_callback=restart_needed_callback,
                                    description="Enable to use RehkopfPilot driver assistance.\n" +
                                                "Disable to use your car's stock driver assistance.")
     # most-changed first: load and destination change with every trip, MADS and enable only with the car off
-    super().__init__([self._load, self._destination, self._personality, self._dec, self._lane_change, self._experimental,
-                      self._mads, self._enable])
+    super().__init__([self._load, self._destination, self._personality, self._dec, self._lane_change, self._pass_hints,
+                      self._experimental, self._mads, self._enable])
 
     self._mads.set_enabled(lambda: not ui_state.started)
     self._enable.set_enabled(lambda: not ui_state.engaged)

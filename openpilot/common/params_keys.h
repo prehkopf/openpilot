@@ -315,6 +315,8 @@ inline static std::unordered_map<std::string, ParamKeyAttributes> keys = {
     {"Offroad_TiciSupport", {CLEAR_ON_MANAGER_START, JSON}},
     {"OdysseyLoadPreset", {PERSISTENT, INT, "0"}},  // 0 empty, 1 family, 2 family + luggage; read by the Honda car controller
     {"FactoryMode", {PERSISTENT, BOOL, "0"}},  // RehkopfPilot: next drive starts as a stock car (hold CANCEL 3 s in Park); no BACKUP so a restore can't flip it
+    {"PassHints", {PERSISTENT | BACKUP, INT, "1"}},  // RehkopfPilot: 0 off, 1 learning (log only), 2 pill, 3 pill + chime
+    {"PassHintsRight", {PERSISTENT | BACKUP, BOOL, "0"}},  // RehkopfPilot: also suggest passing a left-lane camper on the right
     {"OnroadScreenOffBrightness", {PERSISTENT | BACKUP, INT, "0"}},
     {"OnroadScreenOffBrightnessMigrated", {PERSISTENT | BACKUP, STRING, "0.0"}},
     {"OnroadScreenOffTimer", {PERSISTENT | BACKUP, INT, "15"}},

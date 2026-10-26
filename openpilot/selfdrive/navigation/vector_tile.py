@@ -13,6 +13,8 @@ class Road:
   detail: str
   tunnel: bool
   bridge: bool
+  oneway: bool = False  # one carriageway: OSM maps divided roads as two one-way ways (RehkopfPilot pass hints)
+  link: bool = False  # a ramp or connector
 
 
 def fields(data: bytes):
@@ -129,5 +131,6 @@ def decode_roads(data: bytes) -> list[Road]:
       kind = properties.get('kind', '')
       if kind in ('highway', 'major_road', 'minor_road', 'other'):
         roads.extend(Road(points / extent, kind, properties.get('kind_detail', ''), properties.get('is_tunnel') is True,
-                          properties.get('is_bridge') is True) for points in decode_lines(geometry))
+                          properties.get('is_bridge') is True, properties.get('oneway') in ('yes', 'reversible'),
+                          properties.get('is_link') is True) for points in decode_lines(geometry))
   return roads

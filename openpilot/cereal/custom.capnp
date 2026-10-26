@@ -116,6 +116,7 @@ struct SelfdriveStateSP @0x81c2f05a394cf4af {
 
     factoryModeOn @33;  # RehkopfPilot voice clips
     factoryModeOff @34;
+    passHint @35;  # RehkopfPilot: soft chime for a pass hint
   }
 }
 
@@ -490,7 +491,35 @@ struct ModelDataV2SP @0xa1680744031fdb2d {
   }
 }
 
-struct CustomReserved10 @0xcb9fd56c7057593a {
+struct PassAdvice @0xcb9fd56c7057593a {
+  # RehkopfPilot pass hints (selfdrive/controls/passd.py): advice only, never controls the van
+  show @0 :Bool;  # the advisor would suggest a pass now
+  display @1 :Bool;  # ... and the setting and mode let the pill show it
+  direction @2 :Direction;
+  cars @3 :UInt8;  # slow cars ahead the hint is about (1 or 2)
+  chimeCount @4 :UInt32;  # goes up when a hint should chime; soundd plays it once
+  count @5 :UInt32;  # hints this drive (shown or not)
+  accepted @6 :UInt32;  # of them, followed by a lane change that way
+  quiet @7 :Bool;  # no chimes after repeated unused hints
+  blocker @8 :Text;  # first unmet condition when not showing
+  leftLine @9 :LineKind;
+  rightLine @10 :LineKind;
+  roadOneway @11 :Bool;  # matched to one carriageway of a divided road
+  roadKind @12 :Text;
+  mode @13 :UInt8;  # PassHints: 0 off, 1 learning (log only), 2 pill, 3 pill + chime
+
+  enum Direction {
+    none @0;
+    left @1;
+    right @2;
+  }
+
+  enum LineKind {
+    unknown @0;
+    dashedWhite @1;
+    solidWhite @2;
+    yellow @3;
+  }
 }
 
 struct CustomReserved11 @0xc2243c65e0340384 {

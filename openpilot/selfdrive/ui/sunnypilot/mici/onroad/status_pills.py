@@ -36,6 +36,7 @@ REASONS = {
   "collision": ("COLLISION", RED),
 }
 LOAD_PRESETS = {1: "FAMILY", 2: "LUGGAGE"}  # OdysseyLoadPreset (ody-test); Empty shows nothing
+PASS_LEFT, PASS_RIGHT = 1, 2  # passAdvice.direction
 M_TO_FT = 3.28084
 
 
@@ -52,6 +53,8 @@ class PillInputs:
   metric: bool = False
   load_preset: int = 0
   factory: bool = False  # passive drive (factory mode or RehkopfPilot toggled off): the car is stock
+  pass_dir: int = 0  # a pass hint is up: PASS_LEFT or PASS_RIGHT
+  pass_cars: int = 1
 
 
 def pill_rows(p: PillInputs) -> list[list[tuple[str, rl.Color]]]:
@@ -68,6 +71,9 @@ def pill_rows(p: PillInputs) -> list[list[tuple[str, rl.Color]]]:
       row1.append((f"{p.lead_dist:.0f}m" if p.metric else f"{p.lead_dist * M_TO_FT:.0f}ft", WHITE))
   row1.append(("OP LONG", GREEN) if p.op_long else ("STOCK ACC", GREY))
   rows = [row1]
+  if p.pass_dir:  # its own top row: "◀ PASS", "PASS ▶", "◀ PASS ×2" ("◀▶×" are in the UI font)
+    cars = " ×2" if p.pass_cars >= 2 else ""
+    rows.insert(0, [(f"◀ PASS{cars}", BLUE) if p.pass_dir == PASS_LEFT else (f"PASS ▶{cars}", BLUE)])
   if p.op_long and p.experimental:
     if p.dec_enabled and p.dec_active:
       row2 = [("DEC•EXP", ORANGE) if p.dec_blended else ("DEC•ACC", WHITE)]  # "•" is in the loaded glyph set, "·" is not
@@ -118,6 +124,8 @@ class StatusPills(Widget):
       p.lead_dist = sm['radarState'].leadOne.dRel
     if sm.recv_frame['carState'] >= ui_state.started_frame:
       p.v_ego = sm['carState'].vEgo
+    if sm.recv_frame['passAdvice'] >= ui_state.started_frame and sm['passAdvice'].display:
+      p.pass_dir, p.pass_cars = sm['passAdvice'].direction.raw, sm['passAdvice'].cars
     return pill_rows(p)
 
   def _render(self, rect: rl.Rectangle) -> None:
