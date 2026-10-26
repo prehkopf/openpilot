@@ -60,7 +60,7 @@ gitGraph
 
 ## Names and versions
 
-Releases are named after places in Georgia, A to Z, and versioned by release date (`YYYY.MM.DD`, `.2`, `.3` for later releases the same day).
+Releases are named after places in Georgia, A to Z, and versioned by release date (`YYYY.MM.DD`, `.2`, `.3` for later releases the same day). A follow-up keeps the codename with a suffix: **SP** (service pack) adds features or upstream changes, **HF** (hotfix) only fixes a bug in that release, with nothing new to feel in the van.
 
 ```mermaid
 timeline
