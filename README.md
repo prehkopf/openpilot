@@ -48,7 +48,16 @@ The matching car code lives in [prehkopf/opendbc](https://github.com/prehkopf/op
 
 Each release is named after a place in Georgia, A to Z, and versioned by its release date (`YYYY.MM.DD`, with `.2`, `.3` for later releases the same day). The comma shows the name on the home screen and startup banner, for example "Buckhead • 5c3aa0d", and shows a short "what's new" card after an update.
 
-### Fayette SP1 (2026.10.24.2): on `ody-test`
+### Helen (2026.10.26): on `ody-test`
+
+- **Calmer stop-and-go.** Dynamic Experimental Control stays in blended until the road ahead has been clear for 1.5 s (5 s at most), instead of flipping back to ACC and surging into the next slowdown. After a slowdown in town (3-29 mph) it speeds up gently, at most 0.5 m/s² for 6 s. Replayed on my drives: mode switches 3,751 → 2,673, stays under 2 s 820 → 188, no change above 45 mph.
+- **Pass hints, learning first.** A blue `◀ PASS` pill (and optionally a soft chime) when a slower car has held the van back for 10 s on a divided road and the line on the left reads dashed white from the road camera. `×2` for two slow cars; right-side hints for left-lane campers are opt-in. It ships in **learning** mode: hints are worked out and logged but not shown, until they've been reviewed on video. Driving → pass hints: off / learning / pill / pill + chime. Advice only: it can't see the blind spot. Details: [docs/rehkopfpilot/pass-hints.md](docs/rehkopfpilot/pass-hints.md).
+
+### Gwinnett (2026.10.24.3)
+
+- **Factory mode (wife mode).** In Park, hold CANCEL for 3 s: the van runs stock from the next start, with a voice clip to confirm. Same again to switch back.
+
+### Fayette SP1 (2026.10.24.2)
 
 A service pack: Fayette plus sunnypilot's new model loader, picked from upstream on 2026-10-24.
 
