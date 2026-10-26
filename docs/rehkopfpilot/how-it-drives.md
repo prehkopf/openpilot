@@ -25,7 +25,7 @@ mapsd publishes its frames for future navigation-aware driving models; today onl
 |---|---|---|
 | Driving model | comma (sunnypilot model store) | nothing |
 | DesireHelper (lane changes, turns) | comma + sunnypilot | **turn intent**: braking (Buckhead) or a navigation turn on the blinker side (Fayette) means a turn, not a lane change |
-| Planner | comma + sunnypilot (DEC) + MVL | green-light launch (Dahlonega), **lane-change close-gap and catch-up** (Fayette), comma's set-speed fix #39127 |
+| Planner | comma + sunnypilot (DEC) + MVL | green-light launch (Dahlonega), **lane-change close-gap and catch-up** (Fayette), comma's set-speed fix #39127, **calmer stop-and-go DEC** (Gwinnett SP1) |
 | Honda CarController | MVL + brikowski | brikowski's Odyssey gas / brake / coast controller, van-load presets, **full 3840 steering range** (Fayette) |
 | Panda safety | comma + MVL + brikowski | brikowski's Odyssey longitudinal limits |
 
@@ -56,6 +56,7 @@ flowchart TB
 ```
 
 - **Dynamic Experimental Control** (sunnypilot) decides whether the model's own acceleration joins the race: "blended" for a stop ahead, slowing traffic, a curve, a standstill or a collision risk, otherwise plain ACC. The comma four shows why in a pill (`STOP AHEAD`, `SLOWING`, `CURVE`, ...).
+  - **Calmer stop-and-go** (Gwinnett SP1): in town DEC's slowdown test sits near its threshold, because the distance it expects grows with speed, so it used to cycle every ~6 s: ACC sped up hard, the higher speed tripped the test, blended braked hard. A slowdown now keeps blended until the model's path has been clear for 1.5 s (never more than 5 s past the test clearing; emergency entry unchanged), and for 6 s after one the planner speeds up at no more than 0.5 m/s² (3-29 mph only). `tools/ody/drive_report/dec_replay.py` replays DEC on a drive and matches the van's own decisions.
 - **Close-gap** (Fayette, from StarPilot): while the blinker is on for a lane change above 20 mph, the follow time ramps from your personality's gap down to 0.75 s. A car in the blind spot on that side, a lead braking hard, or a stop cancels it.
 - **Catch-up** (Fayette, from StarPilot): above 45 mph, below set speed, with a lead in your path that has pulled 0.4-0.7 s beyond the target gap, the cruise candidate may accelerate up to 0.3 m/s² harder. The MPC still holds the gap. With openpilot longitudinal the Odyssey's radar is silenced, so the lead is a vision lead the model is at least 70% sure of. It only matters in ACC mode, because in blended mode the cruise candidate has no ceiling.
 
