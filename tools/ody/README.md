@@ -27,7 +27,7 @@ flowchart LR
 ## 0. Pre-push checklist
 
 ```bash
-tools/ody/prepush.sh            # ~90 s: build, models on PC, scans, tests, Honda car + safety, own-drive replay, pins, release bump
+tools/ody/prepush.sh            # ~2 min: build, models on PC, scans, tests, Honda car + safety, own-drive replay, pins, release bump
 tools/ody/prepush.sh --full     # + opendbc's whole suite and the A/B replay
 ```
 

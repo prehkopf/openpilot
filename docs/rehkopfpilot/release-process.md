@@ -87,14 +87,20 @@ A release touches four places:
 
 ```mermaid
 flowchart TB
-  b["build (scons)"] --> m["models: driving +<br/>driver monitoring on PC"]
-  m --> s["scans: imports, params,<br/>services, lint"]
-  s --> t["pytest: openpilot +<br/>sunnypilot + UI"]
-  t --> h["Honda car + safety tests<br/>(serial and parallel)"]
-  h --> r["replay a recorded drive:<br/>card, controlsd, plannerd"]
-  r --> tl["recorded turns vs<br/>lane changes"]
-  tl --> a["release audit vs<br/>the published branch"]
-  a --> ok(["PRE-PUSH: OK"])
+  b["build (scons)"] --> g["locationd GPS test<br/>(timing-sensitive: alone, on a quiet PC)"]
+  g --> par
+  subgraph par["side by side, each with its own message queues and params"]
+    direction LR
+    m["models: driving +<br/>driver monitoring on PC"]
+    s["scans: imports, params,<br/>services, lint, LFS host"]
+    ui["settings pages<br/>rendered offscreen"]
+    h["Honda car +<br/>safety tests"]
+    r["my drives: replay,<br/>turns vs lane changes,<br/>factory mode, calm DEC"]
+    a["release audit vs<br/>the published branch"]
+  end
+  par --> t["pytest: openpilot +<br/>sunnypilot + UI (all cores)"]
+  t --> hp["Honda car tests<br/>across workers"]
+  hp --> ok(["PRE-PUSH: OK"])
 ```
 
-`tools/ody/prepush.sh` runs all of this in a few minutes; `--full` adds opendbc's whole suite and an A/B process replay against a sunnypilot base. Details and the reason for each step are in [`tools/ody/README.md`](../../tools/ody/README.md).
+`tools/ody/prepush.sh` runs all of this in about two minutes (the independent checks run in parallel; the steps that already use every core run alone); `--full` adds opendbc's whole suite and an A/B process replay against a sunnypilot base. Details and the reason for each step are in [`tools/ody/README.md`](../../tools/ody/README.md).
