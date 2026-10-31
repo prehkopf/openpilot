@@ -114,12 +114,8 @@ grep -q "^WARN" "$LOG/model_store.log" && warn "$(grep '^WARN' "$LOG/model_store
 [ -f "$LOG/release_audit.log" ] && while read -r w; do warn "$w"; done < <(grep "^WARN" "$LOG/release_audit.log" | sed 's/^WARN //')
 
 # 4. the multi-core tests, one at a time: openpilot + sunnypilot unit/UI tests, Honda car tests across workers
-#    locationd/calibrationd scenario tests assert comma's thresholds; MVL widened them on purpose (mount tolerance)
 step pytest bash -c "cd openpilot && python -m pytest -q -p no:cacheprovider -n $(nproc) --timeout=300 common selfdrive system sunnypilot \
   --ignore=selfdrive/test/process_replay --ignore=selfdrive/ui/tests/diff \
-  --deselect openpilot/selfdrive/locationd/test/test_calibrationd.py::TestCalibrationd::test_calibration_auto_reset \
-  --deselect openpilot/selfdrive/locationd/test/test_locationd_scenarios.py::TestLocationdScenarios::test_consistent_gyro_spikes \
-  --deselect openpilot/selfdrive/locationd/test/test_locationd_scenarios.py::TestLocationdScenarios::test_consistent_timing_spikes \
   --deselect openpilot/sunnypilot/selfdrive/locationd/tests/test_locationd.py::TestLocationdProc::test_params_gps \
   -k 'not onroad and not power_draw and not test_models_segs'"
 #    the Odyssey get_params sets class-level CarControllerParams values, so a test can pass serially only because
