@@ -3,6 +3,12 @@
 One section per codename (see BUILD_NAME). The comma shows the current one as a card after an update. Keep each
 to 3-4 short lines (30 characters at most) so it fits the card.
 
+## Ideal
+- Quieter car-ahead chime
+- Remount check back on
+- Steering learner fix
+- Bug fixes & improvements
+
 ## Helen HF1
 - Startup fix for pass hints
 - Nothing new to notice

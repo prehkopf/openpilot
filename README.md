@@ -48,7 +48,13 @@ The matching car code lives in [prehkopf/opendbc](https://github.com/prehkopf/op
 
 Each release is named after a place in Georgia, A to Z, and versioned by its release date (`YYYY.MM.DD`, with `.2`, `.3` for later releases the same day). The comma shows the name on the home screen and startup banner, for example "Buckhead • 5c3aa0d", and shows a short "what's new" card after an update.
 
-### Helen HF1 (2026.10.26.2): on `ody-test`
+### Ideal (2026.10.30): on `ody-test`
+
+- **Quieter "car ahead moved" chime.** sunnypilot's lead departure chime fired when the car ahead's distance grew 1 m for 0.3 s. At a stop the camera's distance estimate jumps about that much on its own, and stop-and-go traffic creeps a few feet and stops again, so it beeped at red lights that were still red. It now waits for the car ahead to pull away 3 m for 0.5 s, and stays armed after the car passes 8 m (otherwise it would never chime from a stop more than ~15 ft back). Replayed over all 47 chimes on my drives with the driver not reacting: every real departure still chimes (23/23, about 2 s later), false chimes 23 → 4.
+- **Calibration checks back to comma's limits.** MVL widened calibration and localizer limits for temporary mounts, which mostly turned off "Device Remount Detected". My van sits far inside comma's limits on every drive (spread at most 1.4° pitch / 1.0° yaw against 4° / 2°; the localizer rejected no inputs in 11.6 h), so a real mount shift is caught again. Plus comma's calibration fixes #39170-39172.
+- **Steering learner at the stock scale** (brikowski). The live torque learner now samples and fits the Odyssey's full 3840 steering range at the stock 2560 scale, as it did before the range was opened up. It starts fresh once.
+
+### Helen HF1 (2026.10.26.2)
 
 A hotfix: Helen with one bug fixed.
 
