@@ -13,7 +13,14 @@ from openpilot.sunnypilot import PARAMS_UPDATE_PERIOD
 from openpilot.sunnypilot.selfdrive.selfdrived.events import EventsSP
 
 GREEN_LIGHT_X_THRESHOLD = 30
-LEAD_DEPART_DIST_THRESHOLD = 1.0
+# RehkopfPilot: the lead must pull away 3 m (was 1 m) for 0.5 s (was 0.3 s). The vision lead distance at a stop jumps
+# about 1 m on its own at dusk, and stop-and-go traffic creeps 1-2 m and stops again: 4 of the 5 chimes in the week of
+# 2026-10-27 were one of those (routes 3d and 3e).
+LEAD_DEPART_DIST_THRESHOLD = 3.0
+LEAD_DEPART_TRIGGER_TIME = 0.5
+# RehkopfPilot: the 8 m close-lead gate only arms the alert; once armed it stays armed while the lead is still seen, or a
+# lead that pulls past 8 m before the 3 m / 0.5 s trigger is met never chimes (any stop gap over ~4.5 m).
+LEAD_DEPART_KEEP_ARMED = True
 TRIGGER_TIMER_THRESHOLD = 0.3
 
 
@@ -93,7 +100,8 @@ class E2EAlertsHelper:
     elif not self.allowed:
       self.lead_depart_confirmed_lead = False
 
-    if self.allowed and self.lead_depart_confirmed_lead and close_lead_valid:
+    keep_armed = LEAD_DEPART_KEEP_ARMED and self.lead_depart_armed and self.has_lead
+    if self.allowed and self.lead_depart_confirmed_lead and (close_lead_valid or keep_armed):
       self.lead_depart_arm_timer += 1
 
       if self.lead_depart_arm_timer * DT_MDL >= 1.0:
@@ -112,7 +120,7 @@ class E2EAlertsHelper:
       else:
         self.lead_depart_trigger_timer = 0
 
-      if self.lead_depart_trigger_timer * DT_MDL > TRIGGER_TIMER_THRESHOLD:
+      if self.lead_depart_trigger_timer * DT_MDL > LEAD_DEPART_TRIGGER_TIME:
         lead_depart_trigger = True
     elif self.lead_depart_state != E2EStates.ARMED:
       self.last_lead_distance = -1

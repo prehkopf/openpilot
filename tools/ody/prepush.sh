@@ -102,6 +102,8 @@ if [ -n "$SEG" ]; then
 fi
 #    calmer stop-and-go DEC: no flicker on the route 24 stop-and-go, and the replay still matches the van
 batch dec_calm python "$CHECKS/dec_calm.py" "$RLOGS"
+#    lead departure chime: still chimes on every real departure (driver frozen), not on a lead that only creeps
+batch lead_depart_chime python "$CHECKS/lead_depart_chime.py" "$RLOGS"
 # 7. release audit vs the published branch: params keys whose type changed (and their readers), commits with
 #    no real author identity in openpilot or in the opendbc pin range
 if [ -n "$TARGET" ] && git rev-parse -q --verify "origin/$TARGET" >/dev/null; then
