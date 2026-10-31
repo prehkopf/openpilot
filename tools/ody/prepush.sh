@@ -104,6 +104,8 @@ fi
 batch dec_calm python "$CHECKS/dec_calm.py" "$RLOGS"
 #    lead departure chime: still chimes on every real departure (driver frozen), not on a lead that only creeps
 batch lead_depart_chime python "$CHECKS/lead_depart_chime.py" "$RLOGS"
+#    calibration + localizer limits stay comma's (MVL widened them; it hid Device Remount Detected), van inside them
+batch stock_calibration python "$CHECKS/stock_calibration.py" "$RLOGS"
 # 7. release audit vs the published branch: params keys whose type changed (and their readers), commits with
 #    no real author identity in openpilot or in the opendbc pin range
 if [ -n "$TARGET" ] && git rev-parse -q --verify "origin/$TARGET" >/dev/null; then
