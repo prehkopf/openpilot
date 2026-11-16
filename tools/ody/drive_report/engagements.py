@@ -5,10 +5,13 @@ D=json.load(open(sys.argv[1]))
 MPH=2.23694
 cs=D['cs']; T=np.array([r[0] for r in cs]); v=np.array([r[1] for r in cs]); a=np.array([r[2] for r in cs])
 gasP=np.array([r[3] for r in cs]); brkP=np.array([r[4] for r in cs]); strP=np.array([r[5] for r in cs]); strT=np.array([r[6] for r in cs])
+if not cs: print("no carState in this route; nothing to report"); sys.exit(0)
 vc=np.array([r[8] for r in cs]); cru_av=np.array([r[10] for r in cs])
-print(f"duration {T[-1]/60:.1f} min, max speed {v.max()*MPH:.0f} mph, gear set {set(r[15] for r in cs)}")
+# Driven time = sum of carState gaps under 1 s, so missing segments (lost on the comma, or a bad one skipped) don't count.
+dT=np.diff(T); driven=float(dT[dT<1.0].sum()) if len(T)>1 else 0.0
+print(f"duration {driven/60:.1f} min driven (log span {(T[-1]-T[0])/60:.1f} min), max speed {v.max()*MPH:.0f} mph, gear set {set(r[15] for r in cs)}")
 print("faults: steerTemp", sum(r[12] for r in cs), "steerPerm", sum(r[13] for r in cs), "accFaulted", sum(r[14] for r in cs), "cruise avail frac", cru_av.mean().round(3))
-sd=D['sd']; st=np.array([r[0] for r in sd]); en=np.array([r[2] for r in sd])
+sd=D['sd']; st=np.array([r[0] for r in sd]); en=np.array([r[2] for r in sd], dtype=bool)
 print("experimental", collections.Counter(r[3] for r in sd), "personality", collections.Counter(r[4] for r in sd))
 print("states", collections.Counter(r[1] for r in sd))
 # engagement segments
@@ -17,7 +20,7 @@ def at(tq, arrT, arr):
 ev=D['ev']
 chg=np.flatnonzero(np.diff(en.astype(int)))+1
 print("\n== engagements ==")
-eng_time=0; prev=None
+eng_time=0; prev=st[0] if len(en) and en[0] else None
 for i in chg:
     t=st[i]
     if en[i]:
@@ -32,8 +35,12 @@ for i in chg:
         j=np.searchsorted(T,t)
         win=slice(max(0,j-50),j+5)
         print(f"DISENG  t={t/60:5.2f}m speed {at(t,T,v)*MPH:5.1f} mph  brake={brkP[win].any()} gas={gasP[win].any()} events={names}")
-if en[-1] and prev is not None: eng_time+=st[-1]-prev
-print(f"engaged {eng_time/60:.1f} of {T[-1]/60:.1f} min ({eng_time/T[-1]*100:.0f}%)")
+# Engaged time the same way as driven time: gaps over 1 s (missing segments) don't count.
+dS=np.diff(st); eng_time=float(dS[(dS<1.0)&en[:-1]].sum()) if len(st)>1 else 0.0
+print(f"engaged {eng_time/60:.1f} of {driven/60:.1f} min ({eng_time/driven*100 if driven else 0:.0f}%)")
+print("\n== bookmarks ==")
+for t,w in D.get('bm',[]):
+    print(f"  {w} at {t/60:5.2f}m ({t:.0f}s into the extracted log)  speed {at(t,T,v)*MPH:4.1f} mph  engaged={bool(at(t,st,en)) if len(en) else False}")
 print("\n== event counts (first time, approx duration s) ==")
 evc=collections.defaultdict(list)
 for e in ev: evc[e[1]].append(e[0])
