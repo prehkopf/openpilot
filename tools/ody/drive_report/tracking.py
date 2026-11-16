@@ -2,11 +2,13 @@
 # Drive report part 2: steer faults, brake disengages in context, gas overrides, accel tracking by request band, lateral error by speed.  usage: tracking.py <extract.json>
 import json, sys, numpy as np, collections
 D=json.load(open(sys.argv[1])); MPH=2.23694
+if not (D['cs'] and D['cc'] and D['co']): print("no carState/carControl/carOutput; nothing to report"); sys.exit(0)
 cs=D['cs']; T=np.array([r[0] for r in cs]); v=np.array([r[1] for r in cs]); a=np.array([r[2] for r in cs])
 gasP=np.array([r[3] for r in cs]); brkP=np.array([r[4] for r in cs]); strP=np.array([r[5] for r in cs])
-stf=np.array([r[12] for r in cs]); vc=np.array([r[8] for r in cs]); cren=np.array([r[9] for r in cs])
-cc=D['cc']; Tc=np.array([r[0] for r in cc]); en=np.array([r[1] for r in cc]); lat=np.array([r[2] for r in cc]); lon=np.array([r[3] for r in cc]); acmd=np.array([r[4] for r in cc]); tcmd=np.array([r[5] for r in cc]); pitch=np.array([r[7] for r in cc])
-co=D['co']; tcan=np.array([r[3] for r in co]); n=min(len(cs),len(cc),len(co))
+stf=np.array([r[12] for r in cs], dtype=bool); vc=np.array([r[8] for r in cs]); cren=np.array([r[9] for r in cs])
+gasP,brkP,strP,cren=(x.astype(bool) for x in (gasP,brkP,strP,cren))
+cc=D['cc']; Tc=np.array([r[0] for r in cc]); en=np.array([r[1] for r in cc], dtype=bool); lat=np.array([r[2] for r in cc], dtype=bool); lon=np.array([r[3] for r in cc], dtype=bool); acmd=np.array([r[4] for r in cc]); tcmd=np.array([r[5] for r in cc]); pitch=np.array([r[7] for r in cc])
+co=D['co']; tcan=np.array([r[3] for r in co]); n=min(len(cs),len(cc),len(co),len(D["ctl"]) or len(cs))
 T,v,a,gasP,brkP,strP,stf,vc,cren=[x[:n] for x in (T,v,a,gasP,brkP,strP,stf,vc,cren)]
 en,lat,lon,acmd,tcmd,pitch,tcan=[x[:n] for x in (en,lat,lon,acmd,tcmd,pitch,tcan)]
 def runs(mask):
@@ -37,23 +39,29 @@ for s,e in runs(gasP & en):
 # long tracking when longActive and not gas
 m=lon & ~gasP & (v>0.5)
 lag=50
-err=a[lag:][m[:-lag]] - acmd[:-lag][m[:-lag]]
-print(f"\n== long: engaged-long {m.sum()/100:.0f}s; accel tracking err (aEgo@+0.5s - cmd): mean {err.mean():+.2f} rms {np.sqrt((err**2).mean()):.2f}")
-for lo,hi in ((-9,-1),(-1,-0.3),(-0.3,0.3),(0.3,1),(1,9)):
-    mm=(acmd[:-lag]>=lo)&(acmd[:-lag]<hi)&m[:-lag]
-    if mm.sum()>50: e2=a[lag:][mm]-acmd[:-lag][mm]; print(f"   cmd {lo:+}..{hi:+}: n={mm.sum()/100:5.0f}s mean err {e2.mean():+.2f}")
-print(f"   min cmd {acmd[m].min():+.2f}, min aEgo engaged {a[m].min():+.2f}, max aEgo {a[m].max():+.2f}")
-jerk=np.diff(a)/np.diff(T); jj=jerk[m[1:]]
-print(f"   |jerk|>3 m/s3 frac {(np.abs(jj)>3).mean()*100:.1f}%  >5: {(np.abs(jj)>5).mean()*100:.2f}%")
+if m[:-lag].sum()<lag:
+    print(f"\n== long: engaged-long {m.sum()/100:.0f}s; too little to report tracking and jerk ==")
+else:
+    err=a[lag:][m[:-lag]] - acmd[:-lag][m[:-lag]]
+    print(f"\n== long: engaged-long {m.sum()/100:.0f}s; accel tracking err (aEgo@+0.5s - cmd): mean {err.mean():+.2f} rms {np.sqrt((err**2).mean()):.2f}")
+    for lo,hi in ((-9,-1),(-1,-0.3),(-0.3,0.3),(0.3,1),(1,9)):
+        mm=(acmd[:-lag]>=lo)&(acmd[:-lag]<hi)&m[:-lag]
+        if mm.sum()>50: e2=a[lag:][mm]-acmd[:-lag][mm]; print(f"   cmd {lo:+}..{hi:+}: n={mm.sum()/100:5.0f}s mean err {e2.mean():+.2f}")
+    print(f"   min cmd {acmd[m].min():+.2f}, min aEgo engaged {a[m].min():+.2f}, max aEgo {a[m].max():+.2f}")
+    with np.errstate(divide='ignore', invalid='ignore'):
+        jerk=np.diff(a)/np.diff(T)
+    jj=jerk[m[1:]]; jj=jj[np.isfinite(jj)]
+    if len(jj): print(f"   |jerk|>3 m/s3 frac {(np.abs(jj)>3).mean()*100:.1f}%  >5: {(np.abs(jj)>5).mean()*100:.2f}%")
 # stops
 print("== standstill episodes while engaged ==")
 for s,e in runs((v<0.3)&en):
     print(f"  {T[s]/60:5.2f}m held {T[e-1]-T[s]:.1f}s")
 # pitch / grade
-print(f"pitch range engaged {np.degrees(pitch[en]).min():+.1f}..{np.degrees(pitch[en]).max():+.1f} deg")
+if en.any(): print(f"pitch range engaged {np.degrees(pitch[en]).min():+.1f}..{np.degrees(pitch[en]).max():+.1f} deg")
+else: print("pitch range engaged: not engaged on this route")
 # lateral
 print("\n== lateral (latActive, no steer override) ==")
-ctl=D['ctl']; sat=np.array([r[1] for r in ctl])[:n]; act=np.array([r[2] for r in ctl])[:n]; des=np.array([r[3] for r in ctl])[:n]
+ctl=D["ctl"] or [(0,False,0.0,0.0)]*n; sat=np.array([r[1] for r in ctl], dtype=bool)[:n]; act=np.array([r[2] for r in ctl])[:n]; des=np.array([r[3] for r in ctl])[:n]
 ml=lat&~strP&(v>1)
 for lo,hi in ((0,15),(15,25),(25,35),(35,45),(45,60)):
     mm=ml&(v*MPH>=lo)&(v*MPH<hi)
@@ -68,4 +76,5 @@ print("== saturated runs ==")
 for s,e in runs(sat&lat):
     if T[e-1]-T[s]>0.3: print(f"  {T[s]/60:5.2f}m for {T[e-1]-T[s]:4.1f}s v {v[s]*MPH:4.1f} desLat {des[s]:+.2f} actLat {act[s]:+.2f} can {tcan[s]:+.0f}")
 tq=D['tq']; print("\ntorque learner last:", tq[-1] if tq else None)
-ps=D['ps']; print("panda: rxInvalid max", max(p[2] for p in ps), "txBlocked max", max(p[3] for p in ps), "faults", collections.Counter(p[4] for p in ps), "safety", collections.Counter((p[5],p[6]) for p in ps))
+ps=D["ps"]
+if ps: print("panda: rxInvalid max", max(p[2] for p in ps), "txBlocked max", max(p[3] for p in ps), "faults", collections.Counter(p[4] for p in ps), "safety", collections.Counter((p[5],p[6]) for p in ps))

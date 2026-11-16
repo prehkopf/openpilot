@@ -19,7 +19,7 @@ def read(prefix):
 
 route, out_path = sys.argv[1], sys.argv[2]
 t0=None
-cs=[];cc=[];co=[];ctl=[];sd=[];lp=[];ev=[];tq=[];err=[];ps=[];logs=[];rad=[]
+cs=[];cc=[];co=[];ctl=[];sd=[];lp=[];ev=[];tq=[];err=[];ps=[];logs=[];rad=[];bm=[]
 for m in read(route):
     t=m.logMonoTime*1e-9
     if t0 is None: t0=t
@@ -57,8 +57,10 @@ for m in read(route):
     elif w=='pandaStates':
         for p in m.pandaStates:
             ps.append((t,p.controlsAllowed,p.safetyRxInvalid,p.safetyTxBlocked,str(p.faultStatus),str(p.safetyModel),p.safetyParam, p.ignitionLine))
+    elif w in ('userBookmark','bookmarkButton','userFlag'):
+        bm.append((t,w))
     elif w=='logMessage':
         s=m.logMessage
         if any(k in s for k in ('"levelnum": 40','"levelnum": 50','Traceback','"levelnum": 30')): logs.append((t,s[:500]))
-json.dump(dict(cs=cs,cc=cc,co=co,ctl=ctl,sd=sd,lp=lp,ev=ev,tq=tq,err=err,ps=ps,logs=logs,rad=rad),open(out_path,'w'))
-print('done',len(cs),len(ev),len(err),len(logs))
+json.dump(dict(cs=cs,cc=cc,co=co,ctl=ctl,sd=sd,lp=lp,ev=ev,tq=tq,err=err,ps=ps,logs=logs,rad=rad,bm=bm),open(out_path,'w'))
+print('done',len(cs),len(ev),len(err),len(logs),'bookmarks',len(bm))
