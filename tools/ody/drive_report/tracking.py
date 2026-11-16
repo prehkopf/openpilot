@@ -14,8 +14,16 @@ en,lat,lon,acmd,tcmd,pitch,tcan=[x[:n] for x in (en,lat,lon,acmd,tcmd,pitch,tcan
 def runs(mask):
     m=np.concatenate([[0],mask.astype(int),[0]]); d=np.diff(m); s=np.flatnonzero(d==1); e=np.flatnonzero(d==-1); return list(zip(s,e))
 print("== steerFaultTemporary runs ==")
+# The Odyssey EPS (BOSCH_ALT_RADAR, so every non-NORMAL STEER_STATUS counts) reports NO_TORQUE_ALERT_1 whenever the
+# driver's own torque sensor passes about 2,900 (sharp turns; it happens with openpilot off too). That is the driver
+# overriding, not a fault: selfdrived raises no alert for it. Count those runs; list only the rest.
+drvtq=np.array([r[6] for r in cs])[:n]
+override=[(s,e) for s,e in runs(stf) if strP[s] and abs(drvtq[s])>=2500]
+print(f"  driver override (steering pressed, |driver torque| >= 2500 at start): {len(override)} runs, {sum(e-s for s,e in override)} frames, "
+      f"{sum(1 for s,e in override if lat[max(0,s-50):s].any())} with latActive just before")
 for s,e in runs(stf):
-    print(f"  {T[s]/60:5.2f}m for {T[e-1]-T[s]:4.1f}s speed {v[s]*MPH:4.1f}->{v[e-1]*MPH:4.1f} mph engaged={en[s:e].any()} latActive={lat[s:e].any()}")
+    if (s,e) in override: continue
+    print(f"  {T[s]/60:5.2f}m for {T[e-1]-T[s]:4.1f}s speed {v[s]*MPH:4.1f}->{v[e-1]*MPH:4.1f} mph engaged={en[s:e].any()} latActive={lat[s:e].any()} pressed={strP[s]} drvtq={drvtq[s]:.0f}")
 print("== cruiseState.enabled while OP disengaged runs (cruiseMismatch src) ==")
 for s,e in runs(cren & ~en):
     if T[e-1]-T[s]>1: print(f"  {T[s]/60:5.2f}m for {T[e-1]-T[s]:4.1f}s")
