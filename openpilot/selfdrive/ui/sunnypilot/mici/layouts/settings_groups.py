@@ -73,6 +73,15 @@ class DrivingGroup(GroupLayout):
                                 description="Only with experimental mode on.\n" +
                                             "Normal ACC following by default; the model takes over\n" +
                                             "for stops, lights and curves. The DEC pill shows why.")
+    self._firm_stops = BigParamControl("firm stops", "FirmStops",
+                                       description="Only with experimental mode on. New in Jasper, off by default.\n" +
+                                                   "Finishes a stop for a light or sign where the model planned it,\n" +
+                                                   "instead of creeping the last few feet. Up to 1.0 m/s² firmer\n" +
+                                                   "than the model, below 9 mph only.")
+    self._rdm_off = BigParamControl("van: road departure off", "OdysseyRdmOff",
+                                    description="Odyssey with RehkopfPilot gas and brakes. New in Jasper, off by default.\n" +
+                                                "Tells the van its road departure mitigation is off\n" +
+                                                "(MVL's Odyssey fix). Applies from the next drive.")
     self._load = LoadPresetToggle()
     self._destination = DestinationToggle()
     self._mads = DefaultParamControl("MADS steering", "Mads",
@@ -86,7 +95,7 @@ class DrivingGroup(GroupLayout):
                                                "Disable to use your car's stock driver assistance.")
     # most-changed first: load and destination change with every trip, MADS and enable only with the car off
     super().__init__([self._load, self._destination, self._personality, self._dec, self._lane_change, self._pass_hints,
-                      self._experimental, self._mads, self._enable])
+                      self._experimental, self._firm_stops, self._rdm_off, self._mads, self._enable])
 
     self._mads.set_enabled(lambda: not ui_state.started)
     self._enable.set_enabled(lambda: not ui_state.engaged)
@@ -105,7 +114,7 @@ class DrivingGroup(GroupLayout):
     super()._refresh()
     if ui_state.CP is not None:
       has_long = ui_state.has_longitudinal_control
-      for item in (self._experimental, self._dec, self._personality):
+      for item in (self._experimental, self._dec, self._firm_stops, self._rdm_off, self._personality):
         item.set_visible(has_long)
       if not has_long:
         for item, key in ((self._experimental, "ExperimentalMode"), (self._dec, "DynamicExperimentalControl")):

@@ -53,7 +53,7 @@ def test_home_order_is_most_used_first():
 
 def test_driving_order_is_most_used_first():
   order = ("[self._load, self._destination, self._personality, self._dec, self._lane_change, self._pass_hints, self._experimental, " +
-           "self._mads, self._enable]")
+           "self._firm_stops, self._rdm_off, self._mads, self._enable]")
   assert order in " ".join(GROUPS.split()).replace("[ ", "[")
 
 

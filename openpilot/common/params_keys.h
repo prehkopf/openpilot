@@ -317,6 +317,8 @@ inline static std::unordered_map<std::string, ParamKeyAttributes> keys = {
     {"FactoryMode", {PERSISTENT, BOOL, "0"}},  // RehkopfPilot: next drive starts as a stock car (hold CANCEL 3 s in Park); no BACKUP so a restore can't flip it
     {"PassHints", {PERSISTENT | BACKUP, INT, "1"}},  // RehkopfPilot: 0 off, 1 learning (log only), 2 pill, 3 pill + chime
     {"PassHintsRight", {PERSISTENT | BACKUP, BOOL, "0"}},  // RehkopfPilot: also suggest passing a left-lane camper on the right
+    {"FirmStops", {PERSISTENT | BACKUP, BOOL, "0"}},  // RehkopfPilot (Jasper): finish model stops at the stop point instead of creeping; off = planner as before
+    {"OdysseyRdmOff", {PERSISTENT | BACKUP, BOOL, "0"}},  // RehkopfPilot (Jasper, MVL odytest): RDM_OFF on the Odyssey LKAS_HUD under openpilot long; read at drive start
     {"OnroadScreenOffBrightness", {PERSISTENT | BACKUP, INT, "0"}},
     {"OnroadScreenOffBrightnessMigrated", {PERSISTENT | BACKUP, STRING, "0.0"}},
     {"OnroadScreenOffTimer", {PERSISTENT | BACKUP, INT, "15"}},

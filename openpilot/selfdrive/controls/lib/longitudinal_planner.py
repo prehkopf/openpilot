@@ -9,6 +9,7 @@ from openpilot.common.filter_simple import FirstOrderFilter
 from openpilot.common.realtime import DT_MDL
 from openpilot.selfdrive.modeld.constants import ModelConstants
 from openpilot.selfdrive.controls.lib.accel_boost import AccelBoost
+from openpilot.selfdrive.controls.lib.firm_stop import FirmStop
 from openpilot.selfdrive.controls.lib.launch_boost import GreenLightLaunch
 from openpilot.selfdrive.controls.lib.longcontrol import LongCtrlState
 from openpilot.selfdrive.controls.lib.longitudinal_mpc_lib.long_mpc import LongitudinalMpc, LongitudinalPlanSource
@@ -73,6 +74,8 @@ class LongitudinalPlanner(LongitudinalPlannerSP):
     self.accel_boost = AccelBoost()
     self.lane_change_gap = LaneChangeGap()
     self.green_light_launch = GreenLightLaunch()
+    self.firm_stop = FirmStop(dt)
+    self.firm_stops = False  # param FirmStops, set by plannerd; off = the planner as before
 
     self.v_desired_filter = FirstOrderFilter(init_v, 2.0, self.dt)
     self.a_cruise = init_a
@@ -166,6 +169,11 @@ class LongitudinalPlanner(LongitudinalPlannerSP):
                                                          output_should_stop_e2e, sm['modelV2'].velocity.x,
                                                          sm['modelV2'].acceleration.x, action_t)
     output_a_target_e2e = self.accel_boost.update(sm, output_a_target_e2e, output_a_target_mpc, self.a_cruise, is_e2e)
+    # RehkopfPilot (Jasper): finish a model stop at its stop point instead of creeping past it (FirmStops, default off)
+    output_a_target_e2e, output_should_stop_e2e = self.firm_stop.update(self.firm_stops, is_e2e, not reset_state,
+                                                                        sm['carState'].standstill, v_ego,
+                                                                        output_a_target_e2e, output_should_stop_e2e,
+                                                                        sm['modelV2'].velocity.x, sm['modelV2'].position.x)
 
     candidates = [(output_a_target_mpc, self.mpc.source, output_should_stop_mpc),
                   (self.a_cruise, LongitudinalPlanSource.cruise, cruise_should_stop)]

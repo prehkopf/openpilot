@@ -32,8 +32,11 @@ def main():
                             'liveMapDataSP', 'carStateSP', 'selfdriveStateSP', gps_location_service],
                            poll='modelV2', ignore_alive=ignore_services, ignore_avg_freq=ignore_services, ignore_valid=ignore_services)
 
+  longitudinal_planner.firm_stops = params.get_bool("FirmStops")
   while True:
     sm.update()
+    if sm.frame % 100 == 0:  # ~5 s at 20 Hz; FirmStops can be flipped between drives or mid-drive
+      longitudinal_planner.firm_stops = params.get_bool("FirmStops")
     longitudinal_planner.sla.update_buttons(sm['selfdriveStateSP'].buttonsReleaseToggle)
     if sm.updated['modelV2']:
       longitudinal_planner.update(sm)
