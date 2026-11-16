@@ -62,16 +62,24 @@ def apply_branch_switch_compat(basedir: str) -> None:
   if not AGNOS:
     return
 
-  cur_version = HARDWARE.get_os_version()
-  target_version = get_target_agnos_version(basedir)
-  if not is_agnos_downgrade(cur_version, target_version):
-    return
+  # best effort (MVL 0112-op-honda 6cc904875): a failed patch must not block the update itself
+  try:
+    cur_version = HARDWARE.get_os_version()
+    target_version = get_target_agnos_version(basedir)
+    if not is_agnos_downgrade(cur_version, target_version):
+      return
 
-  if not is_legacy_layout(basedir):
-    cloudlog.warning(f"{MARKER}: AGNOS downgrade to {target_version} but unrecognized layout under {basedir}")
-    return
+    if not is_legacy_layout(basedir):
+      cloudlog.warning(f"{MARKER}: AGNOS downgrade to {target_version} but unrecognized layout under {basedir}")
+      return
 
-  cloudlog.info(f"Applying {MARKER} patches under {basedir} ({cur_version} -> {target_version})")
+    cloudlog.info(f"Applying {MARKER} patches under {basedir} ({cur_version} -> {target_version})")
+    patch_legacy_tree(basedir)
+  except Exception:
+    cloudlog.exception(f"{MARKER}: failed to patch {basedir}")
+
+
+def patch_legacy_tree(basedir: str) -> None:
   _install_legacy_pyserial_shim(basedir)
   _ensure_comma_agnos_symlink(basedir)
   _patch_legacy_agnos_lazy_casync(basedir)

@@ -28,6 +28,7 @@ function agnos_init {
     fi
     while true; do
       "$DIR/openpilot/common/hardware/comma/updater" "$AGNOS_PY" "$MANIFEST"
+      # the updater UI can exit without rebooting; finish the flash and swap ourselves
       if "$AGNOS_PY" --swap "$MANIFEST"; then
         sudo reboot
       fi
