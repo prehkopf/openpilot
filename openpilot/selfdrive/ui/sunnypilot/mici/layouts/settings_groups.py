@@ -82,6 +82,10 @@ class DrivingGroup(GroupLayout):
                                     description="Odyssey with RehkopfPilot gas and brakes. New in Jasper, off by default.\n" +
                                                 "Tells the van its road departure mitigation is off\n" +
                                                 "(MVL's Odyssey fix). Applies from the next drive.")
+    self._learner = BigParamControl("van: brikowski learner", "OdysseyLearner",
+                                    description="Odyssey with RehkopfPilot gas and brakes. New in Kennesaw, off by default.\n" +
+                                                "brikowski's newer gas, coast and brake learning (his 11-01 release)\n" +
+                                                "instead of today's controller. Applies from the next drive.")
     self._load = LoadPresetToggle()
     self._destination = DestinationToggle()
     self._mads = DefaultParamControl("MADS steering", "Mads",
@@ -95,7 +99,7 @@ class DrivingGroup(GroupLayout):
                                                "Disable to use your car's stock driver assistance.")
     # most-changed first: load and destination change with every trip, MADS and enable only with the car off
     super().__init__([self._load, self._destination, self._personality, self._dec, self._lane_change, self._pass_hints,
-                      self._experimental, self._firm_stops, self._rdm_off, self._mads, self._enable])
+                      self._experimental, self._firm_stops, self._rdm_off, self._learner, self._mads, self._enable])
 
     self._mads.set_enabled(lambda: not ui_state.started)
     self._enable.set_enabled(lambda: not ui_state.engaged)
@@ -114,7 +118,7 @@ class DrivingGroup(GroupLayout):
     super()._refresh()
     if ui_state.CP is not None:
       has_long = ui_state.has_longitudinal_control
-      for item in (self._experimental, self._dec, self._firm_stops, self._rdm_off, self._personality):
+      for item in (self._experimental, self._dec, self._firm_stops, self._rdm_off, self._learner, self._personality):
         item.set_visible(has_long)
       if not has_long:
         for item, key in ((self._experimental, "ExperimentalMode"), (self._dec, "DynamicExperimentalControl")):

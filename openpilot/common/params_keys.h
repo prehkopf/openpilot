@@ -319,6 +319,7 @@ inline static std::unordered_map<std::string, ParamKeyAttributes> keys = {
     {"PassHintsRight", {PERSISTENT | BACKUP, BOOL, "0"}},  // RehkopfPilot: also suggest passing a left-lane camper on the right
     {"FirmStops", {PERSISTENT | BACKUP, BOOL, "0"}},  // RehkopfPilot (Jasper): finish model stops at the stop point instead of creeping; off = planner as before
     {"OdysseyRdmOff", {PERSISTENT | BACKUP, BOOL, "0"}},  // RehkopfPilot (Jasper, MVL odytest): RDM_OFF on the Odyssey LKAS_HUD under openpilot long; read at drive start
+    {"OdysseyLearner", {PERSISTENT | BACKUP, BOOL, "0"}},  // RehkopfPilot (Kennesaw): brikowski's 11-01 Odyssey learner instead of today's controller; read at drive start
     {"OnroadScreenOffBrightness", {PERSISTENT | BACKUP, INT, "0"}},
     {"OnroadScreenOffBrightnessMigrated", {PERSISTENT | BACKUP, STRING, "0.0"}},
     {"OnroadScreenOffTimer", {PERSISTENT | BACKUP, INT, "15"}},
