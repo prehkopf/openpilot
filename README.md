@@ -37,7 +37,7 @@ If this build is useful to you, the thanks go to them. If you have an Odyssey an
 | Branch | Status | Install URL |
 |---|---|---|
 | `ody-next` | My daily driver. Currently **Etowah**, promoted 2026-10-19 after driving it. | `installer.comma.ai/prehkopf/ody-next` |
-| `ody-test` | The next release, on test drives before it moves to `ody-next`. Currently **Fayette SP1**. | `installer.comma.ai/prehkopf/ody-test` |
+| `ody-test` | The next release, on test drives before it moves to `ody-next`. Currently **Ideal**; **Jasper** is next. | `installer.comma.ai/prehkopf/ody-test` |
 | MVL's branches (`sp-honda-*`, …) | Unchanged mirrors of [mvl-boston/openpilot](https://github.com/mvl-boston/openpilot) | through the branch switcher |
 
 Both branches have a **van load** setting (Empty / Family / Family + luggage) that adds gas for a heavier van; it is still being calibrated on loaded drives.
@@ -47,6 +47,17 @@ The matching car code lives in [prehkopf/opendbc](https://github.com/prehkopf/op
 ## Releases
 
 Each release is named after a place in Georgia, A to Z, and versioned by its release date (`YYYY.MM.DD`, with `.2`, `.3` for later releases the same day). The comma shows the name on the home screen and startup banner, for example "Buckhead • 5c3aa0d", and shows a short "what's new" card after an update.
+
+### Jasper (2026.11.16): proposed for `ody-test`
+
+Small and low-risk, built from the Ideal drive report (38 routes on Ideal). Everything that changes how the van drives is a toggle and is **off** until it has been driven.
+
+- **Restore the previous version from the error screen** (idea from FrogPilot). When a new build fails to start, the error screen offers "Restore previous" next to Reboot, as long as the install it replaced is still on the comma. Unlike FrogPilot's version it moves the failed install aside first, moves the backup in, and only then deletes the failed one, so a failure halfway can't leave the comma with no openpilot. It also stops the launcher re-installing the failed build and turns automatic updates off (turn them back on in Software). The restored build runs its own AGNOS check on the reboot. Not shown on a PC or without a whole backup.
+- **Firm stops** (Driving → firm stops, **off** by default, Experimental mode only). On route 0x86 (24 min in) the van stopped for a red light under the driving model and crept the last few feet over the stop line; I had to brake at 1.3 mph. The model's planned stop point kept moving ahead of the van and its braking faded with speed (-0.98, -0.63, -0.38 m/s² over the last 3 s), and openpilot only switches to holding the stop below 0.67 mph. Below 9 mph, firm stops holds the model to the closest stop point it has planned (plus 0.7 m, the model's measured walking-pace bias), asks for the steady braking that stops there (at most 1.0 m/s² firmer than the model, never past -1.5 m/s²), and holds the stop from 1.1 mph. Replayed over all 8 op-long stops on my drives: firm on the two I had to finish myself (up to 1.0 and 0.57 m/s² firmer), unchanged on the six that went well (at most 0.08).
+- **Van: road departure off** (Driving, **off** by default, from MVL's Odyssey branch). Under openpilot gas and brakes the van's lane-keeping HUD message never told it that road departure mitigation is off; MVL's fix sets those two bits. Off sends exactly what Ideal sent (checked byte for byte against route 0x86). Applies from the next drive.
+- **Branch switching** (MVL): the patch that lets an older branch boot after a switch is now best effort, so a failure in it can no longer stop an update. MVL's other branch-switch fixes were already in.
+- **"Steering assist temporarily unavailable" faults in the drive report were me, not the van.** The Odyssey's steering reports a temporary fault whenever the driver turns the wheel hard (over ~2,900 on its torque sensor: sharp turns at 5-33 mph, with openpilot off too). No alert comes up for it. The drive report now counts these as driver overrides and lists only real faults.
+- **Testing:** new tests for the restore swap (including a forced failure halfway), firm stops (closed loop against a model fitted to the creeping stop), the HUD bits, and the branch-switch patcher; `drive_report/firm_stop_replay.py`.
 
 ### Ideal (2026.10.30): on `ody-test`
 
@@ -169,6 +180,7 @@ A service pack: Buckhead plus fixes picked from upstream on 2026-10-18.
 These are plans in rough order, not promises. Anything that changes how the van drives waits for enough drive data to tune it and to check the result. Last updated 2026-10-23; the full upstream and fork survey behind it is in my notes.
 
 **Next releases**
+- **Kennesaw**: brikowski's Odyssey learner from 2026-10-21 to 11-01 (gas calibration per controller, coast learning through idle-stop, warmup gas, grade calibration through zero demand), ported by content behind a toggle that defaults to today's controller.
 - **Gwinnett**
   - Uphill compensation. Holds and gentle slowdowns run about 0.2 m/s² short on grades over 1°.
   - Smarter DEC on the highway: stay in ACC above about 55 mph unless the model sees a stop. dragonpilot's AEM (choose ACC or blended from the model's own throttle probability) is the candidate.

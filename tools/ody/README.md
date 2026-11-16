@@ -147,6 +147,7 @@ python tools/ody/drive_report/stop_launch_report.py ~/rlogs/<route> [...]  # Bra
 python tools/ody/drive_report/launch_eval.py ~/rlogs/<route> [...]         # where the green-light launch fires and what is in front
 python tools/ody/drive_report/route_overview.py ~/rlogs/<route> [...]      # one line per route: build, start time, miles, lat/long share, how each engagement ended, alerts
 python tools/ody/drive_report/lane_change_check.py ~/rlogs/<route> [...]   # every lane change openpilot started: real lane change or a turn?
+python tools/ody/drive_report/firm_stop_replay.py ~/rlogs/<route> [...]   # FirmStops (Jasper) over every op-long stop, open loop: model vs firm finish
 ```
 
 What to look at after a drive:
@@ -156,6 +157,8 @@ What to look at after a drive:
 - **Steer saturation** and the share of time above 2560 steer counts. From Fayette the full 3840 is available at every speed, so time at 2560 should drop.
 - **Lane changes started in turns** (`lane_change_check.py`).
 - **Disengage causes.** Brake disengages should be driver choice.
+- **Stops the driver finished.** A brake press below 3 mph at the end of an e2e stop is the creeping finish FirmStops is for (`firm_stop_replay.py`).
+- **Steer faults** (`tracking.py`): runs that aren't driver overrides (EPS `NO_TORQUE_ALERT_1` at heavy driver torque) are the ones to look at.
 - **Panda TX blocks.** They're benign when they happen only at engage and disengage edges.
 
 ## Updating from upstream
@@ -214,3 +217,7 @@ Add one line each time Q/A finds something new. Turn it into a prepush check whe
 - **A replay of the drive as driven can't judge an alert the driver reacts to.** After a lead departure chime you were usually moving within ~1 s, which stands the helper down, so the as-driven replay said a stricter chime "missed" 13 of 14 real departures. Freeze the van at the stop and move the lead by its real position (recorded distance plus how far the van rolled): `drive_report/lead_depart_replay.py`.
 - **sunnypilot's lead departure chime disarms once the lead is past 8 m.** Raising the trigger from 1 m to 3 m silently stopped it chiming from any stop more than ~4.5 m back; only a stop-gap x lead-speed grid test showed it. Check every gate a threshold change interacts with, not just the threshold.
 - **The vision lead distance jumps ~1 m at a stop by itself** (12 -> 16 ft at dusk with nobody moving on the video). Don't act on a single step of a few feet in `radarState.leadOne.dRel`.
+- **`steerFaultTemporary` on the Odyssey is almost always the driver, not a fault.** The van is `BOSCH_ALT_RADAR`, so opendbc counts every non-NORMAL EPS `STEER_STATUS` as a temporary fault, and the EPS reports `NO_TORQUE_ALERT_1` whenever its driver torque sensor passes ~2,900 (median 2,964 at onset, none below 2,500 in 4,800 frames on 00000086--791f5e1d12; `NO_TORQUE_ALERT_2` from ~3,750). That's sharp turns at 5-33 mph, with openpilot off too; in 328 of 380 cases with lateral on, openpilot was already steering the same way, often at its 3,840 limit. selfdrived raises no alert for it (steering pressed at the rising edge). `drive_report/tracking.py` now counts these runs as driver overrides and lists only the rest. Decode `STEER_STATUS` (0x18F, bus 1 on this van) before calling one a fault.
+- **opendbc's structs break on Python 3.14** (deferred annotations; `get_params_sp` fails with `object |= int`, 420 Honda tests). WSL Ubuntu 26.04 ships 3.14: run the suites on 3.12 (`uv venv -p 3.12`).
+- **An empty fingerprint misses the van's detected flags.** `BOSCH_EXT_HUD` comes from 0x33DA in the fingerprint, so a test built on `gen_empty_fingerprint()` sends a different LKAS_HUD than the van (flags 519). Add 0x33DA when a test is about the HUD (`test_odyssey_rdm_off.py`).
+- **The model's planned stop point at walking pace sits short of a clean stop** (3.45 m ahead at 2.5 m/s on 00000006--387f6e3153--22; the van stopped at 4.13 m without help), and on a creeping finish it recedes as the van rolls. Anything that aims at it needs that bias (FirmStops aims 0.7 m past it). `drive_report/firm_stop_replay.py` shows it per stop.
