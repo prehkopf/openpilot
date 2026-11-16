@@ -37,7 +37,7 @@ If this build is useful to you, the thanks go to them. If you have an Odyssey an
 | Branch | Status | Install URL |
 |---|---|---|
 | `ody-next` | My daily driver. Currently **Etowah**, promoted 2026-10-19 after driving it. | `installer.comma.ai/prehkopf/ody-next` |
-| `ody-test` | The next release, on test drives before it moves to `ody-next`. Currently **Ideal**; **Jasper** is next. | `installer.comma.ai/prehkopf/ody-test` |
+| `ody-test` | The next release, on test drives before it moves to `ody-next`. Currently **Ideal**; **Jasper** and **Kennesaw** are next. | `installer.comma.ai/prehkopf/ody-test` |
 | MVL's branches (`sp-honda-*`, …) | Unchanged mirrors of [mvl-boston/openpilot](https://github.com/mvl-boston/openpilot) | through the branch switcher |
 
 Both branches have a **van load** setting (Empty / Family / Family + luggage) that adds gas for a heavier van; it is still being calibrated on loaded drives.
@@ -47,6 +47,15 @@ The matching car code lives in [prehkopf/opendbc](https://github.com/prehkopf/op
 ## Releases
 
 Each release is named after a place in Georgia, A to Z, and versioned by its release date (`YYYY.MM.DD`, with `.2`, `.3` for later releases the same day). The comma shows the name on the home screen and startup banner, for example "Buckhead • 5c3aa0d", and shows a short "what's new" card after an update.
+
+### Kennesaw (2026.11.16.2): proposed for `ody-test`, after Jasper
+
+Jasper plus **brikowski's Odyssey learner** from his 2026-10-21 to 11-01 work (the opendbc behind his 11-02 `ody-op` stable, `c91503afe`), ported by content. All credit for the controller to brikowski. It sits behind **Driving → van: brikowski learner, off by default**: off, the van runs exactly Jasper's controller.
+
+- **What it adds when on:** gas calibration that survives coasting and picks up again when gas resumes; added gas withdrawn when the van keeps accelerating more than asked; warmup corrections withdrawn gradually instead of dropped; coast learning that keeps its calibration through idle stop; excess gas released into coast on flat roads, not only downhill; brake-to-coast handoffs within his forecast margin; the grade load added before the gas calibration, with one ceiling through zero demand (aimed at the ~0.2-0.35 m/s² uphill shortfall in the drive reports); plus his correctness fixes (gas counts checked as the CAN packer rounds them, gas feedback only with the brakes released).
+- **Kept ours:** safety flag 256 and panda safety untouched, the van load setting (applied to his gas map), the 0.5 s delay, 3840 steering, MVL's base.
+- **Not taken:** his `ecoMode` fields in `car.capnp` and the learner reset on an ECON switch (needs an ECON signal of our own first), his fractional steering slew (steering, its own change later).
+- **Testing:** his own Odyssey tests run against the port (106 pass with 1,036 subtests; only the parts not taken are skipped), and 22 of them fail with the learner off, so they really exercise it. New tests that it's off by default, Odyssey with RehkopfPilot gas and brakes only, and resets on disengage and gear changes (each checked by breaking it on purpose). Closed-loop van sim (`odyssey_load_sim.py --learner`): same tracking as today within a few hundredths. Replayed over 7.75 engaged minutes of my drives as continuous routes (`drive_report/learner_replay.py`): it asks for more gas (on average 12-50 counts more, at most 251; open loop, so not yet how the van would respond), never above today's peak, and picks gas vs brake the same way 99% of the time. The van needs real drives with it on before it can become the default.
 
 ### Jasper (2026.11.16): proposed for `ody-test`
 
@@ -180,7 +189,7 @@ A service pack: Buckhead plus fixes picked from upstream on 2026-10-18.
 These are plans in rough order, not promises. Anything that changes how the van drives waits for enough drive data to tune it and to check the result. Last updated 2026-10-23; the full upstream and fork survey behind it is in my notes.
 
 **Next releases**
-- **Kennesaw**: brikowski's Odyssey learner from 2026-10-21 to 11-01 (gas calibration per controller, coast learning through idle-stop, warmup gas, grade calibration through zero demand), ported by content behind a toggle that defaults to today's controller.
+- **Kennesaw follow-ups**: an ECON signal of our own (custom struct, not `car.capnp`) so the learner restarts on an ECON switch, as brikowski's does; his fractional steering slew behind its own toggle; make the learner the default once it has been driven.
 - **Gwinnett**
   - Uphill compensation. Holds and gentle slowdowns run about 0.2 m/s² short on grades over 1°.
   - Smarter DEC on the highway: stay in ACC above about 55 mph unless the model sees a stop. dragonpilot's AEM (choose ACC or blended from the model's own throttle probability) is the candidate.

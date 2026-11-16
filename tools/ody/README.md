@@ -121,7 +121,7 @@ This fits the van's response to the gas command over engaged, pedal-free samples
 
 The fit uses routes 7 and 8 (empty van, rmse 0.11 m/s²), and its best delay is 0.5 s.
 
-On `ody-test`, `opendbc/car/honda/tests/odyssey_load_sim.py` runs the real Honda CarController in closed loop against this model. It covers each true load against each preset setting, over level pull-aways, 4% climbs and cruise.
+On `ody-test`, `opendbc/car/honda/tests/odyssey_load_sim.py` runs the real Honda CarController in closed loop against this model. It covers each true load against each preset setting, over level pull-aways, 4% climbs and cruise. `--learner` (Kennesaw) runs today's controller and brikowski's learner side by side, with rms tracking error, on those plus a 3% climb, a 2% hold and a 4% descent.
 
 To calibrate the load presets: run `fit_plant.py` on a loaded drive and compare `c_gas` and `b` with the empty fit. If needed, update `ODYSSEY_LOAD_FACTORS` and the sim's plant.
 
@@ -148,6 +148,7 @@ python tools/ody/drive_report/launch_eval.py ~/rlogs/<route> [...]         # whe
 python tools/ody/drive_report/route_overview.py ~/rlogs/<route> [...]      # one line per route: build, start time, miles, lat/long share, how each engagement ended, alerts
 python tools/ody/drive_report/lane_change_check.py ~/rlogs/<route> [...]   # every lane change openpilot started: real lane change or a turn?
 python tools/ody/drive_report/firm_stop_replay.py ~/rlogs/<route> [...]   # FirmStops (Jasper) over every op-long stop, open loop: model vs firm finish
+python tools/ody/drive_report/learner_replay.py ~/rlogs/<route> <first> <last> [--load N]  # Kennesaw: today's controller vs brikowski's learner on a recorded drive, one continuous run from <first>
 ```
 
 What to look at after a drive:
@@ -221,3 +222,4 @@ Add one line each time Q/A finds something new. Turn it into a prepush check whe
 - **opendbc's structs break on Python 3.14** (deferred annotations; `get_params_sp` fails with `object |= int`, 420 Honda tests). WSL Ubuntu 26.04 ships 3.14: run the suites on 3.12 (`uv venv -p 3.12`).
 - **An empty fingerprint misses the van's detected flags.** `BOSCH_EXT_HUD` comes from 0x33DA in the fingerprint, so a test built on `gen_empty_fingerprint()` sends a different LKAS_HUD than the van (flags 519). Add 0x33DA when a test is about the HUD (`test_odyssey_rdm_off.py`).
 - **The model's planned stop point at walking pace sits short of a clean stop** (3.45 m ahead at 2.5 m/s on 00000006--387f6e3153--22; the van stopped at 4.13 m without help), and on a creeping finish it recedes as the van rolls. Anything that aims at it needs that bias (FirmStops aims 0.7 m past it). `drive_report/firm_stop_replay.py` shows it per stop.
+- **A controller replay must start where the drive started.** The Odyssey gas feedback integrates from the first engaged second, so replaying from the middle of a route gives different gas than the van sent (00000086 segments 72-74: median 44 counts off with fresh state). `learner_replay.py` runs from the first segment you give it; start at 0 to check fidelity. Also call `CarInterface.get_params` before building the interface from a logged CarParams: it sets the Odyssey's class-level gas map.
