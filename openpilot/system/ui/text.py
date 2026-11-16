@@ -2,12 +2,14 @@
 import re
 import sys
 import pyray as rl
+from openpilot.common.basedir import BASEDIR
 from openpilot.common.hardware import HARDWARE, PC
 from openpilot.system.ui.lib.application import BIG_UI, gui_app
 from openpilot.system.ui.lib.scroll_panel import GuiScrollPanel
 from openpilot.system.ui.lib.text_measure import measure_text_cached
 from openpilot.system.ui.widgets import Widget
 from openpilot.system.ui.widgets.button import Button, ButtonStyle
+from openpilot.system.ui.restore_previous import backup_available, restore_previous
 
 if BIG_UI:
   MARGIN = 50
@@ -65,12 +67,27 @@ class TextWindow(Widget):
 
     button_text = "Exit" if PC else "Reboot"
     self._button = Button(button_text, click_callback=self._on_button_clicked, button_style=ButtonStyle.TRANSPARENT_WHITE_BORDER, font_size=FONT_SIZE)
+    # RehkopfPilot (Jasper, idea from FrogPilot): put the previous install back. Only on the device, only with a whole backup.
+    self._restore_button = Button("Restore previous", click_callback=self._on_restore_clicked,
+                                  button_style=ButtonStyle.TRANSPARENT_WHITE_BORDER, font_size=FONT_SIZE)
+    self._restore_button.set_visible(not PC and backup_available())
 
   @staticmethod
   def _on_button_clicked():
     gui_app.request_close()
     if not PC:
       HARDWARE.reboot()
+
+  @staticmethod
+  def _on_restore_clicked():
+    gui_app.request_close()
+
+    def disable_updates():
+      from openpilot.common.params import Params
+      Params().put_bool("DisableUpdates", True)
+
+    restore_previous(BASEDIR, disable_updates=disable_updates)
+    HARDWARE.reboot()  # into the restored install, or the current one if the swap could not be done
 
   def _render(self, rect: rl.Rectangle):
     scroll = self._scroll_panel.update(self._textarea_rect, self._content_rect)
@@ -84,6 +101,9 @@ class TextWindow(Widget):
 
     button_bounds = rl.Rectangle(rect.width - MARGIN - BUTTON_SIZE.x - SPACING, rect.height - MARGIN - BUTTON_SIZE.y, BUTTON_SIZE.x, BUTTON_SIZE.y)
     self._button.render(button_bounds)
+    if self._restore_button.is_visible:
+      restore_width = BUTTON_SIZE.x * 2
+      self._restore_button.render(rl.Rectangle(button_bounds.x - SPACING - restore_width, button_bounds.y, restore_width, BUTTON_SIZE.y))
 
 
 if __name__ == "__main__":
