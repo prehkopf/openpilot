@@ -65,6 +65,14 @@ def read_seg(fn):
   return ticks, yaw
 
 
+def read_seg_or_skip(fn):
+  """read_seg, but an unreadable segment (corrupt on the comma, or a short copy) is skipped with its error, not fatal."""
+  try:
+    return read_seg(fn) + (None,)
+  except Exception as e:  # any LogReader failure means the segment can't be used
+    return [], [], f"{type(e).__name__}: {str(e)[:120]}"
+
+
 def replay_states(ticks):
   dh, c, out = DesireHelper(), CS(), np.zeros(len(ticks), dtype=int)
   for k, (_, cs, lat, prob, _, nav) in enumerate(ticks):
@@ -81,7 +89,11 @@ def replay_states(ticks):
 
 def check_route(route):
   with ProcessPoolExecutor(min(os.cpu_count() or 4, 16)) as ex:
-    parts = list(ex.map(read_seg, seg_files(route)))
+    files = seg_files(route)
+    parts = list(ex.map(read_seg_or_skip, files))
+  for fn, p in zip(files, parts, strict=True):
+    if p[2] is not None:
+      print(f"WARN skipped unreadable segment {os.path.basename(os.path.dirname(fn))}: {p[2]}")
   ticks = [x for p in parts for x in p[0]]
   y = np.array([x for p in parts for x in p[1]], dtype=float)
   if len(ticks) < 100 or len(y) < 100:
