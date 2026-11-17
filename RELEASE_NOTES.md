@@ -7,7 +7,7 @@ to 3-4 short lines (30 characters at most) so it fits the card.
 - Restore button on error page
 - Firm stops (opt-in)
 - Van RDM-off HUD (opt-in)
-- Bug fixes & improvements
+- CMBS-off light w/ OP long
 
 ## Ideal
 - Quieter car-ahead chime
